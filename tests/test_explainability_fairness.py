@@ -1,7 +1,9 @@
 import unittest
+from unittest.mock import patch
 
 from sklearn.ensemble import RandomForestClassifier
 
+from src.crediens_ai.explainability import explain
 from src.crediens_ai.explainability.explain import ExplanationEngine
 from src.crediens_ai.fairness.metrics import FairnessEvaluator
 
@@ -22,8 +24,25 @@ class ExplainabilityAndFairnessTests(unittest.TestCase):
         self.assertIn("method", shap_result)
         self.assertTrue(shap_result["attribution_available"])
         self.assertIn("feature_importance", lime_result)
+        self.assertEqual(lime_result["method"], "lime")
         self.assertTrue(lime_result["attribution_available"])
         self.assertGreater(len(lime_result["feature_importance"]), 0)
+        self.assertTrue(all(value != 0 for value in lime_result["feature_importance"].values()))
+
+    def test_missing_lime_does_not_fabricate_feature_attributions(self):
+        class ProbabilityOnlyModel:
+            def predict_proba(self, values):
+                return [[0.4, 0.6] for _ in values]
+
+        explanation = ExplanationEngine(ProbabilityOnlyModel())
+        with patch.object(explain, "lime_tabular", None):
+            result = explanation.lime_local([[5, 1]], [1])
+
+        self.assertEqual(result["method"], "not_available")
+        self.assertFalse(result["attribution_available"])
+        self.assertEqual(result["feature_importance"], {})
+        self.assertEqual(result["top_features"], [])
+        self.assertIn("no feature contributions were generated", result["notes"])
 
     def test_unavailable_explanations_are_labelled_as_input_magnitude_proxy(self):
         explanation = ExplanationEngine(None)

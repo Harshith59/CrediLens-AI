@@ -1,6 +1,8 @@
 import unittest
+import warnings
 
 import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
 
 from src.crediens_ai.data.pipeline import SyntheticDataBuilder
 from src.crediens_ai.models.trainer import RiskModelTrainer
@@ -10,6 +12,7 @@ from src.crediens_ai.risk.engine import RiskAssessmentEngine
 class RiskPlatformTests(unittest.TestCase):
     def setUp(self):
         self.engine = RiskAssessmentEngine()
+        self.addCleanup(self.engine.close)
 
     def test_it_project_high_risk(self):
         payload = {
@@ -277,6 +280,48 @@ class RiskPlatformTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "INVALID_INPUT")
         self.assertIn("outside the valid range", result["errors"][0])
+
+    def test_numpy_trained_model_prediction_has_no_feature_name_warning(self):
+        model = RandomForestClassifier(random_state=42, n_estimators=10)
+        training_data = [
+            [100.0, 0.1, 1.0, 30.0],
+            [5000.0, 0.9, 8.0, 2.0],
+            [200.0, 0.2, 2.0, 24.0],
+            [4000.0, 0.8, 7.0, 3.0],
+        ]
+        model.fit(training_data, [0, 1, 0, 1])
+        feature_columns = [
+            "transaction_amount",
+            "anomaly_score",
+            "velocity",
+            "account_age",
+        ]
+        self.engine.register_model(
+            industry="BANKING",
+            risk_type="FRAUD",
+            model_version="credit-risk-v1",
+            model=model,
+            feature_columns=feature_columns,
+        )
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", UserWarning)
+            result = self.engine.evaluate({
+                "industry": "BANKING",
+                "risk_type": "FRAUD",
+                "data": {
+                    "transaction_amount": 1000,
+                    "anomaly_score": 0.5,
+                    "velocity": 3,
+                    "account_age": 12,
+                },
+            })
+
+        self.assertEqual(result["status"], "SUCCESS")
+        self.assertFalse(any(
+            "feature names" in str(item.message).lower()
+            for item in caught
+        ))
 
     def test_unregistered_requested_model_version_is_rejected(self):
         result = self.engine.evaluate({

@@ -1,10 +1,14 @@
-import os
+import atexit
 import json
+import os
 import secrets
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Awaitable, Callable, Dict, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -112,6 +116,7 @@ def require_role(required_role: Literal["analyst", "reviewer"]):
 
 audit_database_path = os.environ.get("CREDILENS_AUDIT_DB", ".credilens/audit.sqlite3")
 engine = RiskAssessmentEngine(audit_store=AuditStore(audit_database_path))
+atexit.register(engine.close)
 
 DEMO_SAMPLE_CASES: Dict[str, Dict[str, Dict[str, Any]]] = {
     "BANKING": {
@@ -197,6 +202,23 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="CrediLens AI", version="0.1.0", lifespan=lifespan)
 
 
+@app.exception_handler(RequestValidationError)
+async def handle_request_validation_error(
+    request: Request,
+    error: RequestValidationError,
+) -> JSONResponse:
+    if request.url.path != "/api/demo/assessments":
+        return await request_validation_exception_handler(request, error)
+    safe_errors = [
+        {key: value for key, value in item.items() if key != "input"}
+        for item in error.errors()
+    ]
+    return JSONResponse(
+        status_code=422,
+        content={"detail": jsonable_encoder(safe_errors)},
+    )
+
+
 @app.middleware("http")
 async def limit_demo_request_size(
     request: Request,
@@ -279,7 +301,7 @@ def demo_assessment(payload: DemoAssessmentRequest) -> Dict[str, Any]:
     scoring_method = result["scoring_method"]
     if scoring_method == "MODEL":
         method_description = (
-            "A registered model produced this score. Feature-level causal attribution "
+            "A registered trained model produced this prediction score. Feature-level causal attribution "
             "is not configured for this public demonstration."
         )
     else:
@@ -296,16 +318,28 @@ def demo_assessment(payload: DemoAssessmentRequest) -> Dict[str, Any]:
             "Independently review the evidence before any real-world decision."
         ),
     }
-    report = {
-        "industry": result["industry"],
-        "risk_type": result["risk_type"],
-        "risk_probability": result["risk_probability"],
-        "risk_level": result["risk_level"],
-        "decision": result["decision"],
-        "scoring_method": scoring_method,
-        "timestamp": result["timestamp"],
-        "input_fields": list(payload.data),
+    explanation = {
+        "status": "LIMITED",
+        "attribution_available": False,
+        "summary": method_description,
+        "limitation": (
+            "No feature-level SHAP or LIME attribution is configured for this public report."
+        ),
     }
+    recommendation = recommendations[result["decision"]]
+    report = ReportBuilder.build_demo_json_report(
+        industry=result["industry"],
+        risk_type=result["risk_type"],
+        inputs=payload.data,
+        risk_probability=result["risk_probability"],
+        risk_level=result["risk_level"],
+        decision=result["decision"],
+        scoring_method=scoring_method,
+        scoring_method_description=method_description,
+        timestamp=result["timestamp"],
+        recommendation=recommendation,
+        explanation=explanation,
+    )
     return {
         "status": "SUCCESS",
         "industry": result["industry"],
@@ -319,7 +353,9 @@ def demo_assessment(payload: DemoAssessmentRequest) -> Dict[str, Any]:
             {"name": name, "value": value}
             for name, value in payload.data.items()
         ],
-        "recommendation": recommendations[result["decision"]],
+        "recommendation": recommendation,
+        "explanation": explanation,
+        "disclaimer": report["disclaimer"],
         "automated_check_status": result["compliance_status"],
         "timestamp": result["timestamp"],
         "report": report,

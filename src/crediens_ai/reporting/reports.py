@@ -12,6 +12,41 @@ class ReportBuilder:
     """Build JSON and HTML report payloads for assessment outputs."""
 
     @staticmethod
+    def build_demo_json_report(
+        *,
+        industry: str,
+        risk_type: str,
+        inputs: Dict[str, Any],
+        risk_probability: float,
+        risk_level: str,
+        decision: str,
+        scoring_method: str,
+        scoring_method_description: str,
+        timestamp: str,
+        recommendation: str,
+        explanation: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        return {
+            "report_type": "PUBLIC_DEMO",
+            "demo": True,
+            "disclaimer": (
+                "Synthetic demonstration only. Do not use this result for real-world "
+                "credit, fraud, safety, or other consequential decisions."
+            ),
+            "industry": industry,
+            "risk_type": risk_type,
+            "risk_probability": risk_probability,
+            "risk_level": risk_level,
+            "decision": decision,
+            "scoring_method": scoring_method,
+            "scoring_method_description": scoring_method_description,
+            "timestamp": timestamp,
+            "inputs": dict(inputs),
+            "explanation": dict(explanation),
+            "recommendations": [recommendation],
+        }
+
+    @staticmethod
     def build_json_report(assessment: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "assessment_id": assessment.get("audit_id"),

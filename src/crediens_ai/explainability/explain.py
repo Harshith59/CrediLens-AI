@@ -155,7 +155,7 @@ class ExplanationEngine:
             importances = dict(zip(feature_names, self.model.feature_importances_))
             method = "model_feature_importance"
         else:
-            importances = {name: 1.0 / max(1, len(feature_names)) for name in feature_names}
+            importances = {}
             method = "not_available"
         sorted_importance = sorted(importances.items(), key=lambda item: item[1], reverse=True)
         return {
@@ -163,4 +163,10 @@ class ExplanationEngine:
             "top_features": [name for name, _ in sorted_importance[: min(5, len(sorted_importance))]],
             "method": method,
             "attribution_available": False,
+            "notes": (
+                "LIME is unavailable and this model provides no feature-importance values; "
+                "no feature contributions were generated."
+                if method == "not_available"
+                else "Global model feature importance is not a local LIME attribution."
+            ),
         }

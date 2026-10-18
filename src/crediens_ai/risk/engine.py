@@ -31,6 +31,9 @@ class RiskAssessmentEngine:
         self.fairness_engine = FairnessEvaluator()
         self._registered_models: Dict[tuple[str, str, str], Dict[str, Any]] = {}
 
+    def close(self) -> None:
+        self.audit_store.close()
+
     def register_model(
         self,
         industry: str,
@@ -49,6 +52,16 @@ class RiskAssessmentEngine:
             "model": model,
             "feature_columns": list(feature_columns),
         }
+
+    @staticmethod
+    def _uses_named_model_features(model: Any) -> bool:
+        if hasattr(model, "feature_names_in_"):
+            return True
+        nested_models = getattr(model, "models", None)
+        return isinstance(nested_models, dict) and any(
+            hasattr(nested_model, "feature_names_in_")
+            for nested_model in nested_models.values()
+        )
 
     def get_registered_models(self) -> List[Dict[str, Any]]:
         return [
@@ -431,6 +444,8 @@ class RiskAssessmentEngine:
                     "errors": [f"Missing required model features: {', '.join(missing_features)}"],
                 }
             sample = pd.DataFrame([{feature: data[feature] for feature in feature_columns}])
+            if not self._uses_named_model_features(registered_model["model"]):
+                sample = sample.to_numpy()
             try:
                 probabilities = registered_model["model"].predict_proba(sample)
                 probability = float(probabilities[0][1])

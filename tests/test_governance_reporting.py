@@ -6,7 +6,9 @@ from src.crediens_ai.risk.engine import RiskAssessmentEngine
 
 class GovernanceAndReportingTests(unittest.TestCase):
     def test_assessment_compliance_includes_rule_evidence_and_review_status(self):
-        result = RiskAssessmentEngine().evaluate({
+        engine = RiskAssessmentEngine()
+        self.addCleanup(engine.close)
+        result = engine.evaluate({
             "industry": "IT",
             "risk_type": "PROJECT",
             "data": {

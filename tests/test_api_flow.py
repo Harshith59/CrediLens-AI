@@ -1,4 +1,5 @@
 import os
+import json
 from unittest.mock import patch
 import unittest
 
@@ -99,10 +100,115 @@ class ApiFlowTests(unittest.TestCase):
         self.assertLessEqual(assessment["risk_probability"], 1.0)
         self.assertEqual(len(assessment["input_factors"]), len(sample))
         self.assertIn("not a trained-model prediction", assessment["method_description"])
+        report = assessment["report"]
+        self.assertEqual(set(report), {
+            "report_type",
+            "demo",
+            "disclaimer",
+            "industry",
+            "risk_type",
+            "risk_probability",
+            "risk_level",
+            "decision",
+            "scoring_method",
+            "scoring_method_description",
+            "timestamp",
+            "inputs",
+            "explanation",
+            "recommendations",
+        })
+        self.assertEqual(report["inputs"], sample)
+        self.assertEqual(report["industry"], "IT")
+        self.assertEqual(report["risk_type"], "PROJECT")
+        self.assertEqual(report["risk_probability"], assessment["risk_probability"])
+        self.assertEqual(report["risk_level"], assessment["risk_level"])
+        self.assertEqual(report["decision"], assessment["decision"])
+        self.assertEqual(report["scoring_method"], "HEURISTIC")
+        self.assertEqual(report["timestamp"], assessment["timestamp"])
+        self.assertIn("Synthetic demonstration only", report["disclaimer"])
+        self.assertFalse(report["explanation"]["attribution_available"])
+        self.assertTrue(report["explanation"]["summary"])
+        self.assertEqual(report["recommendations"], [assessment["recommendation"]])
+        self.assertNotIn("audit_id", report)
+        self.assertNotIn("api_key", report)
+        self.assertNotIn("credentials", report)
+        self.assertNotIn("governance", report)
+        self.assertNotIn("private audit", json.dumps(report).lower())
         self.assertTrue(assessment["demo"])
         self.assertFalse(assessment["persisted"])
         self.assertNotIn("audit_id", assessment)
         self.assertEqual(engine.audit_store.count(), audit_count_before)
+
+    def test_public_demo_rejects_credentials_and_private_fields(self):
+        self.client.headers.pop("X-API-Key")
+        sample = self.client.get("/api/demo/modules").json()["modules"]["IT"]["PROJECT"]["sample"]
+        private_sentinel = "private-demo-api-key-sentinel"
+        response = self.client.post("/api/demo/assessments", json={
+            "industry": "IT",
+            "risk_type": "PROJECT",
+            "data": {**sample, "api_key": private_sentinel},
+            "audit_id": "private-audit-record",
+        })
+
+        self.assertEqual(response.status_code, 422)
+        self.assertNotIn(private_sentinel, response.text)
+        self.assertNotIn("private-audit-record", response.text)
+
+    def test_public_demo_report_round_trips_as_downloadable_json(self):
+        self.client.headers.pop("X-API-Key")
+        sample = self.client.get("/api/demo/modules").json()["modules"]["IT"]["PROJECT"]["sample"]
+        response = self.client.post("/api/demo/assessments", json={
+            "industry": "IT",
+            "risk_type": "PROJECT",
+            "data": sample,
+        })
+
+        self.assertEqual(response.status_code, 200, response.text)
+        downloaded_json = json.dumps(response.json()["report"])
+        downloaded_report = json.loads(downloaded_json)
+
+        self.assertEqual(downloaded_report["inputs"], sample)
+        self.assertEqual(downloaded_report["report_type"], "PUBLIC_DEMO")
+        self.assertEqual(downloaded_report["decision"], "HUMAN_REVIEW")
+        self.assertIn("Do not use this result", downloaded_report["disclaimer"])
+
+    def test_public_demo_report_labels_registered_trained_model_prediction(self):
+        class DemoProbabilityModel:
+            def predict_proba(self, values):
+                return [[0.6, 0.4] for _ in values]
+
+        previous_models = engine._registered_models
+        engine._registered_models = previous_models.copy()
+        self.addCleanup(setattr, engine, "_registered_models", previous_models)
+        engine.register_model(
+            industry="IT",
+            risk_type="PROJECT",
+            model_version="project-risk-v1",
+            model=DemoProbabilityModel(),
+            feature_columns=[
+                "team_size",
+                "bug_count",
+                "critical_bugs",
+                "pending_tasks",
+                "test_coverage",
+                "technical_debt",
+            ],
+        )
+        self.client.headers.pop("X-API-Key")
+        sample = self.client.get("/api/demo/modules").json()["modules"]["IT"]["PROJECT"]["sample"]
+
+        response = self.client.post("/api/demo/assessments", json={
+            "industry": "IT",
+            "risk_type": "PROJECT",
+            "data": sample,
+        })
+
+        self.assertEqual(response.status_code, 200, response.text)
+        assessment = response.json()
+        self.assertEqual(assessment["scoring_method"], "MODEL")
+        self.assertIn("trained model", assessment["method_description"])
+        self.assertIn("trained model", assessment["report"]["scoring_method_description"])
+        self.assertEqual(assessment["report"]["scoring_method"], "MODEL")
 
     def test_every_public_demo_module_accepts_its_synthetic_sample(self):
         self.client.headers.pop("X-API-Key")

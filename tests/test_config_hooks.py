@@ -31,12 +31,14 @@ class ConfigHooksTests(unittest.TestCase):
 
     def test_engine_exposes_configured_module_defaults(self):
         engine = RiskAssessmentEngine()
+        self.addCleanup(engine.close)
         module = engine.resolve_module("IT", "PROJECT")
         self.assertEqual(module["model_version"], "project-risk-v1")
         self.assertIn("bug_count", module["features"])
 
     def test_engine_returns_evidence_and_trace_record(self):
         engine = RiskAssessmentEngine()
+        self.addCleanup(engine.close)
         result = engine.evaluate({
             "industry": "IT",
             "risk_type": "PROJECT",
@@ -60,6 +62,7 @@ class ConfigHooksTests(unittest.TestCase):
 
     def test_engine_records_human_review_decision(self):
         engine = RiskAssessmentEngine()
+        self.addCleanup(engine.close)
         result = engine.evaluate({
             "industry": "IT",
             "risk_type": "PROJECT",
