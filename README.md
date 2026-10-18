@@ -75,6 +75,26 @@ $env:CREDILENS_MODEL_ARTIFACT = "models\it\project-risk-v1.joblib"
 
 Open `http://127.0.0.1:8000/dashboard`, paste an analyst/reviewer key, and connect. Analyst keys can submit assessments and read reports/audit history. Reviewer and admin keys can also record a human outcome; the reviewer identity comes from the configured key subject, not from the request body.
 
+## Deploy a free prototype on Render
+
+The repository includes a Render Blueprint (`render.yaml`) for a free Python web service. To deploy it:
+
+1. Sign in to Render and create a new Blueprint instance.
+2. Connect the private `Harshith59/CrediLens-AI` GitHub repository and select its `main` branch.
+3. Confirm the service plan is **Free**. Do not add a persistent disk or upgrade the service if you need to avoid paid resources.
+4. When prompted, set `CREDILENS_API_KEYS` in Render's secret environment-variable form. Do not put API keys in this repository or share them in chat. It must be a JSON map from keys of at least 32 characters to role/subject objects, for example:
+
+   ```json
+   {
+     "<analyst-key>": {"role": "analyst", "subject": "render-analyst"},
+     "<reviewer-key>": {"role": "reviewer", "subject": "render-reviewer"}
+   }
+   ```
+
+5. After deployment, open the generated `https://<service-name>.onrender.com/dashboard` URL and use the analyst or reviewer key.
+
+The Free plan is intended for prototypes, not production: Render spins down inactive free web services, and their filesystems are ephemeral. This app's SQLite audit history will be lost on restarts, spin-downs, or redeployments. No persistent disk or paid database is configured. Free usage quotas apply; check [Render's current free plan limitations](https://render.com/docs/free) and billing controls before deploying. If the API-key secret is not configured, protected API endpoints return HTTP 503.
+
 ## API overview
 
 The service provides:
