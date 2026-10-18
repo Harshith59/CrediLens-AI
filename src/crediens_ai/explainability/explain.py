@@ -79,11 +79,15 @@ class ExplanationEngine:
         array = self._prepare_numeric_matrix(X)
         if array.size == 0:
             feature_importance = {name: 0.0 for name in feature_names}
+            method = "not_available"
+            attribution_available = False
         elif self.model is None:
             feature_importance = {
                 feature_names[idx]: float(np.abs(array[:, idx]).mean())
                 for idx in range(array.shape[1])
             }
+            method = "input_magnitude_proxy"
+            attribution_available = False
         elif shap is not None:
             explainer = shap.Explainer(self.model, array)
             values = explainer(array)
@@ -96,15 +100,23 @@ class ExplanationEngine:
                 if importances.ndim > 1:
                     importances = importances.mean(axis=tuple(range(1, importances.ndim)))
             feature_importance = {name: float(score) for name, score in zip(feature_names, importances)}
+            method = "shap"
+            attribution_available = True
         else:
             if hasattr(self.model, "feature_importances_"):
                 feature_importance = {name: float(score) for name, score in zip(feature_names, self.model.feature_importances_)}
+                method = "model_feature_importance"
+                attribution_available = False
             else:
                 feature_importance = {name: 0.0 for name in feature_names}
+                method = "not_available"
+                attribution_available = False
         sorted_importance = sorted(feature_importance.items(), key=lambda item: item[1], reverse=True)
         return {
             "feature_importance": dict(sorted_importance),
             "top_features": [name for name, _ in sorted_importance[: min(5, len(sorted_importance))]],
+            "method": method,
+            "attribution_available": attribution_available,
         }
 
     def lime_local(self, X: Sequence[Sequence[float]], y: Sequence[int]) -> Dict[str, Any]:
@@ -117,6 +129,8 @@ class ExplanationEngine:
             return {
                 "feature_importance": dict(sorted_importance),
                 "top_features": [name for name, _ in sorted_importance[: min(5, len(sorted_importance))]],
+                "method": "input_magnitude_proxy",
+                "attribution_available": False,
             }
 
         if lime_tabular is not None and len(array) > 0:
@@ -130,14 +144,23 @@ class ExplanationEngine:
             row = array[0]
             explanation = explainer.explain_instance(row, lambda values: self.model.predict_proba(values), num_features=len(feature_names), num_samples=200)
             explanation_dict = dict(explanation.as_list())
-            return {"feature_importance": explanation_dict, "top_features": list(explanation_dict.keys())[:5]}
+            return {
+                "feature_importance": explanation_dict,
+                "top_features": list(explanation_dict.keys())[:5],
+                "method": "lime",
+                "attribution_available": True,
+            }
 
         if hasattr(self.model, "feature_importances_"):
             importances = dict(zip(feature_names, self.model.feature_importances_))
+            method = "model_feature_importance"
         else:
             importances = {name: 1.0 / max(1, len(feature_names)) for name in feature_names}
+            method = "not_available"
         sorted_importance = sorted(importances.items(), key=lambda item: item[1], reverse=True)
         return {
             "feature_importance": dict(sorted_importance),
             "top_features": [name for name, _ in sorted_importance[: min(5, len(sorted_importance))]],
+            "method": method,
+            "attribution_available": False,
         }

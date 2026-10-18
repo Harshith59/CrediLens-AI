@@ -11,6 +11,7 @@ class RiskModuleConfig:
     model_version: str
     features: List[str]
     categorical_features: Dict[str, List[str]] = field(default_factory=dict)
+    numeric_bounds: Dict[str, tuple[float | None, float | None]] = field(default_factory=dict)
     policy_bands: Dict[str, tuple[float, float]] = field(default_factory=lambda: {"LOW": (0.0, 0.2), "MEDIUM": (0.2, 0.5), "HIGH": (0.5, 1.0)})
     monitor_threshold: float = 0.4
     human_review_threshold: float = 0.55
@@ -30,6 +31,7 @@ DEFAULT_MODULE_CONFIGS = {
             model_version="project-risk-v1",
             features=["team_size", "bug_count", "critical_bugs", "pending_tasks", "test_coverage", "technical_debt"],
             categorical_features={"technical_debt": ["Low", "Medium", "High", "Critical"]},
+            numeric_bounds={"test_coverage": (0, 100)},
             policy_bands={"LOW": (0.0, 0.2), "MEDIUM": (0.2, 0.5), "HIGH": (0.5, 1.0)},
         ),
         "CYBER": RiskModuleConfig(
@@ -37,6 +39,7 @@ DEFAULT_MODULE_CONFIGS = {
             risk_type="CYBER",
             model_version="project-risk-v1",
             features=["failed_logins", "vulnerabilities", "critical_vulnerabilities", "patch_age", "mfa_coverage"],
+            numeric_bounds={"mfa_coverage": (0, 100)},
             policy_bands={"LOW": (0.0, 0.25), "MEDIUM": (0.25, 0.55), "HIGH": (0.55, 1.0)},
         ),
         "OPERATIONAL": RiskModuleConfig(
@@ -45,6 +48,7 @@ DEFAULT_MODULE_CONFIGS = {
             model_version="operational-risk-v1",
             features=["code_complexity", "bug_density", "open_issues", "sprint_velocity", "technical_debt", "test_coverage", "failed_deployments"],
             categorical_features={"technical_debt": ["Low", "Medium", "High", "Critical"]},
+            numeric_bounds={"sprint_velocity": (0, 100), "test_coverage": (0, 100)},
             policy_bands={"LOW": (0.0, 0.2), "MEDIUM": (0.2, 0.5), "HIGH": (0.5, 1.0)},
         ),
     },
@@ -62,6 +66,11 @@ DEFAULT_MODULE_CONFIGS = {
             risk_type="SUPPLY_CHAIN",
             model_version="equipment-risk-v1",
             features=["supplier_reliability", "delivery_delay", "inventory_level", "supplier_concentration"],
+            numeric_bounds={
+                "supplier_reliability": (0, 100),
+                "inventory_level": (0, 100),
+                "supplier_concentration": (0, 100),
+            },
             policy_bands={"LOW": (0.0, 0.25), "MEDIUM": (0.25, 0.55), "HIGH": (0.55, 1.0)},
         ),
     },
@@ -79,6 +88,7 @@ DEFAULT_MODULE_CONFIGS = {
             risk_type="FRAUD",
             model_version="credit-risk-v1",
             features=["transaction_amount", "anomaly_score", "velocity", "account_age"],
+            numeric_bounds={"anomaly_score": (0, 1)},
             policy_bands={"LOW": (0.0, 0.15), "MEDIUM": (0.15, 0.45), "HIGH": (0.45, 1.0)},
         ),
     },

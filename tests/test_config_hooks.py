@@ -55,6 +55,8 @@ class ConfigHooksTests(unittest.TestCase):
         self.assertIn("missing_fields", result["evidence"])
         self.assertIn("decision_trace", result)
         self.assertIn("input_snapshot", result["decision_trace"])
+        self.assertEqual(result["fairness"]["status"], "NOT_ASSESSED")
+        self.assertIsNone(result["fairness"]["gap"])
 
     def test_engine_records_human_review_decision(self):
         engine = RiskAssessmentEngine()

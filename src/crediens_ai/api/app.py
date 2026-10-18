@@ -2,11 +2,11 @@ import os
 import json
 import secrets
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Dict, Literal
+from typing import Any, AsyncIterator, Awaitable, Callable, Dict, Literal
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from pydantic import BaseModel, ConfigDict, Field
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.crediens_ai.audit.store import AuditStore
 from src.crediens_ai.dashboard.app import DashboardApp
@@ -34,6 +34,26 @@ class ExplainRequest(BaseModel):
     risk_type: str = Field(..., description="Risk type")
     data: Dict[str, Any] = Field(default_factory=dict)
     model_version: str | None = None
+
+
+class DemoAssessmentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    industry: str = Field(..., min_length=1, max_length=32)
+    risk_type: str = Field(..., min_length=1, max_length=32)
+    data: Dict[str, Any] = Field(..., max_length=20)
+
+    @field_validator("data")
+    @classmethod
+    def validate_demo_data(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+        for name, value in data.items():
+            if not isinstance(name, str) or len(name) > 80:
+                raise ValueError("Input field names must be strings of at most 80 characters")
+            if isinstance(value, str) and len(value) > 100:
+                raise ValueError(f"{name} must be at most 100 characters")
+            if value is not None and not isinstance(value, (str, int, float, bool)):
+                raise ValueError(f"{name} must be a simple string or number")
+        return data
 
 
 class ReviewDecisionRequest(BaseModel):
@@ -93,6 +113,65 @@ def require_role(required_role: Literal["analyst", "reviewer"]):
 audit_database_path = os.environ.get("CREDILENS_AUDIT_DB", ".credilens/audit.sqlite3")
 engine = RiskAssessmentEngine(audit_store=AuditStore(audit_database_path))
 
+DEMO_SAMPLE_CASES: Dict[str, Dict[str, Dict[str, Any]]] = {
+    "BANKING": {
+        "CREDIT": {
+            "income": 90000,
+            "loan_amount": 50000,
+            "credit_history": "Good",
+            "existing_debt": 20000,
+            "employment_years": 10,
+        },
+        "FRAUD": {
+            "transaction_amount": 2400,
+            "anomaly_score": 0.72,
+            "velocity": 4,
+            "account_age": 18,
+        },
+    },
+    "IT": {
+        "CYBER": {
+            "failed_logins": 24,
+            "vulnerabilities": 7,
+            "critical_vulnerabilities": 1,
+            "patch_age": 30,
+            "mfa_coverage": 82,
+        },
+        "OPERATIONAL": {
+            "code_complexity": 55,
+            "bug_density": 2.4,
+            "open_issues": 18,
+            "sprint_velocity": 75,
+            "technical_debt": "Medium",
+            "test_coverage": 68,
+            "failed_deployments": 2,
+        },
+        "PROJECT": {
+            "team_size": 12,
+            "bug_count": 45,
+            "critical_bugs": 8,
+            "pending_tasks": 28,
+            "test_coverage": 61,
+            "technical_debt": "High",
+        },
+    },
+    "MANUFACTURING": {
+        "EQUIPMENT": {
+            "machine_age": 14,
+            "vibration": 8.4,
+            "temperature": 92,
+            "maintenance_history": "Overdue",
+            "operating_hours": 4800,
+        },
+        "SUPPLY_CHAIN": {
+            "supplier_reliability": 85,
+            "delivery_delay": 5,
+            "inventory_level": 45,
+            "supplier_concentration": 60,
+        },
+    },
+}
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -116,6 +195,24 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="CrediLens AI", version="0.1.0", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def limit_demo_request_size(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    if request.url.path == "/api/demo/assessments":
+        content_length = request.headers.get("content-length")
+        if content_length is None:
+            return JSONResponse(status_code=411, content={"detail": "Content-Length is required"})
+        try:
+            payload_size = int(content_length)
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header"})
+        if payload_size > 16384:
+            return JSONResponse(status_code=413, content={"detail": "Demo assessment payload exceeds 16 KB"})
+    return await call_next(request)
 
 
 @app.get("/", include_in_schema=False)
@@ -147,6 +244,87 @@ def public_catalog() -> Dict[str, Any]:
         "industries": industries,
         "modules": modules,
         "module_count": sum(len(risk_types) for risk_types in modules.values()),
+    }
+
+
+@app.get("/api/demo/modules")
+def demo_modules() -> Dict[str, Any]:
+    modules: Dict[str, Any] = {}
+    for industry in engine.registry.get_supported_industries():
+        modules[industry] = {}
+        for risk_type in engine.registry.get_risk_types(industry):
+            module = engine.resolve_module(industry, risk_type)
+            modules[industry][risk_type] = {
+                "features": module.get("features", []),
+                "categorical_features": module.get("categorical_features", {}),
+                "numeric_bounds": module.get("numeric_bounds", {}),
+                "sample": DEMO_SAMPLE_CASES[industry][risk_type],
+            }
+    return {"modules": modules, "sample_data_label": "Synthetic demonstration inputs"}
+
+
+@app.post("/api/demo/assessments")
+def demo_assessment(payload: DemoAssessmentRequest) -> Dict[str, Any]:
+    result = engine.evaluate(
+        {
+            "industry": payload.industry,
+            "risk_type": payload.risk_type,
+            "data": payload.data,
+        },
+        persist_audit=False,
+    )
+    if result.get("status") == "INVALID_INPUT":
+        raise HTTPException(status_code=422, detail=result["errors"])
+
+    scoring_method = result["scoring_method"]
+    if scoring_method == "MODEL":
+        method_description = (
+            "A registered model produced this score. Feature-level causal attribution "
+            "is not configured for this public demonstration."
+        )
+    else:
+        method_description = (
+            "A rule-based heuristic produced this score; it is not a trained-model prediction. "
+            "Inputs are listed for transparency, not as causal feature attributions."
+        )
+
+    recommendations = {
+        "HUMAN_REVIEW": "Policy requires qualified human review before a real-world decision.",
+        "MONITOR": "Policy suggests monitoring and reassessing as conditions change.",
+        "APPROVE": (
+            "Configured thresholds did not trigger monitoring or human review. "
+            "Independently review the evidence before any real-world decision."
+        ),
+    }
+    report = {
+        "industry": result["industry"],
+        "risk_type": result["risk_type"],
+        "risk_probability": result["risk_probability"],
+        "risk_level": result["risk_level"],
+        "decision": result["decision"],
+        "scoring_method": scoring_method,
+        "timestamp": result["timestamp"],
+        "input_fields": list(payload.data),
+    }
+    return {
+        "status": "SUCCESS",
+        "industry": result["industry"],
+        "risk_type": result["risk_type"],
+        "risk_probability": result["risk_probability"],
+        "risk_level": result["risk_level"],
+        "decision": result["decision"],
+        "scoring_method": scoring_method,
+        "method_description": method_description,
+        "input_factors": [
+            {"name": name, "value": value}
+            for name, value in payload.data.items()
+        ],
+        "recommendation": recommendations[result["decision"]],
+        "automated_check_status": result["compliance_status"],
+        "timestamp": result["timestamp"],
+        "report": report,
+        "demo": True,
+        "persisted": False,
     }
 
 

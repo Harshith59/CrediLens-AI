@@ -5,10 +5,11 @@ CrediLens AI is a multi-industry risk intelligence platform blueprint implemente
 ## What is included
 
 - Configurable industry and risk-type metadata
+- Public demonstration workflow with synthetic examples and no required API key
 - Module-aware required features, value validation, risk scoring, risk bands, and policy decisions
 - Optional fitted-model inference registered per industry and risk type, with an explicit heuristic fallback for modules without a trained model
 - Governance and compliance checks with per-rule evidence
-- SQLite-persisted audit records and review-event history
+- SQLite-persisted protected-workspace audit records and review-event history
 - Minimal FastAPI-based REST API
 - Example CLI runner
 - Regression tests for the core engine
@@ -40,21 +41,29 @@ CrediLens-AI/
 
 ```bash
 cd CrediLens-AI
-C:/ProgramData/anaconda3/python.exe -m pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
 # Run the demo assessment flow
-C:/ProgramData/anaconda3/python.exe main.py
+python main.py
 
 # Train and save the synthetic IT project-risk reference model
-C:/ProgramData/anaconda3/python.exe train_model.py --output models/it/project-risk-v1.joblib
+python train_model.py --output models/it/project-risk-v1.joblib
 
 # Run the regression suite
-C:/ProgramData/anaconda3/python.exe -m unittest discover -s tests -v
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+
+# Start the browser app at http://127.0.0.1:8000
+python start_server.py
 ```
 
-## API access and browser dashboard
+## Public demo and protected workspace
 
-The API requires an analyst, reviewer, or admin API key for private data and configuration endpoints. `/health`, the static `/dashboard` shell, and the metadata-only `/api/catalog` are public; the catalog lists supported industries and risk modules but does not expose audit or model data. Generate high-entropy keys locally and configure the key-to-role map in the environment before starting the service. Do not commit keys to source control.
+Open `http://127.0.0.1:8000/dashboard` and select any supported industry/module. The public demo loads clearly labelled synthetic sample inputs and submits them to the real assessment engine without an API key. The demo returns the result and an optional JSON report but does not persist the request or result in private audit history. Rule-based results are labelled as heuristics, not trained-model predictions; current input summaries are not causal feature explanations. Do not use demonstration output to make real credit, fraud, safety, or other consequential decisions.
+
+The staff-only workspace is separate at the bottom of the dashboard. It can read private audit history, review records, and model configuration only after an authorized key is entered. The key is held in page memory and is not stored in browser storage. Closing the workspace clears the key and removes displayed private data.
+
+`CREDILENS_API_KEYS` is optional for the public demo. Configure it only if you want to enable the protected workspace. Generate keys locally; do not commit or share them.
 
 ```powershell
 $analystKey = "$([guid]::NewGuid().ToString('N'))$([guid]::NewGuid().ToString('N'))"
@@ -64,16 +73,12 @@ $apiKeys[$analystKey] = @{ role = "analyst"; subject = "local-analyst" }
 $apiKeys[$reviewerKey] = @{ role = "reviewer"; subject = "local-reviewer" }
 $env:CREDILENS_API_KEYS = $apiKeys | ConvertTo-Json -Compress
 
-# Optional: set this after training if the API should use the fitted model.
+# Optional: use a trained artifact or a different audit database.
 $env:CREDILENS_MODEL_ARTIFACT = "models\it\project-risk-v1.joblib"
-
-# Optional: use a different SQLite audit database path.
 # $env:CREDILENS_AUDIT_DB = "C:\data\credilens-audit.sqlite3"
-
-& "C:\ProgramData\anaconda3\python.exe" start_server.py
 ```
 
-Open `http://127.0.0.1:8000/dashboard` to browse available risk modules without connecting. Paste an analyst/reviewer key to unlock assessments and private audit/model data. Enter the key itself, not the full JSON map configured in the environment. Analyst keys can submit assessments and read reports/audit history. Reviewer and admin keys can also record a human outcome; the reviewer identity comes from the configured key subject, not from the request body.
+Restart the server after setting environment variables. Analyst keys can create protected assessments and read reports/audit history. Reviewer and admin keys can also record human outcomes; reviewer identity is derived from the configured key subject.
 
 ## Deploy a free prototype on Render
 
@@ -82,7 +87,7 @@ The repository includes a Render Blueprint (`render.yaml`) for a free Python web
 1. Sign in to Render and create a new Blueprint instance.
 2. Connect the private `Harshith59/CrediLens-AI` GitHub repository and select its `main` branch.
 3. Confirm the service plan is **Free**. Do not add a persistent disk or upgrade the service if you need to avoid paid resources.
-4. When prompted, set `CREDILENS_API_KEYS` in Render's secret environment-variable form. Do not put API keys in this repository or share them in chat. It must be a JSON map from keys of at least 32 characters to role/subject objects, for example:
+4. No API key is required to run the public demonstration. If private staff features are needed, add `CREDILENS_API_KEYS` in the Render service's **Environment** settings as a secret JSON map from keys of at least 32 characters to role/subject objects. Do not put API keys in this repository or share them in chat. Example with placeholders only:
 
    ```json
    {
@@ -91,7 +96,7 @@ The repository includes a Render Blueprint (`render.yaml`) for a free Python web
    }
    ```
 
-5. After deployment, open the generated `https://<service-name>.onrender.com/dashboard` URL and use the analyst or reviewer key.
+5. After deployment, open the generated `https://<service-name>.onrender.com/` URL. The dashboard and public demo work without setting `CREDILENS_API_KEYS`; protected staff endpoints return HTTP 503 until that optional configuration is valid.
 
 The Free plan is intended for prototypes, not production: Render spins down inactive free web services, and their filesystems are ephemeral. This app's SQLite audit history will be lost on restarts, spin-downs, or redeployments. No persistent disk or paid database is configured. Free usage quotas apply; check [Render's current free plan limitations](https://render.com/docs/free) and billing controls before deploying. If the API-key secret is missing or invalid, protected API endpoints return HTTP 503; check that `CREDILENS_API_KEYS` is a JSON object mapping each key (at least 32 characters) to a valid role and non-empty subject.
 
@@ -99,13 +104,16 @@ The Free plan is intended for prototypes, not production: Render spins down inac
 
 The service provides:
 
+- `GET /` (redirects to dashboard)
 - `GET /health`
 - `GET /dashboard`
 - `GET /api/catalog` (public supported-industry and risk-module names)
-- `GET /api/model-info`
-- `GET /api/config/modules`
-- `POST /api/risk/predict`
-- `POST /api/risk/explain`
+- `GET /api/demo/modules` (public field schemas and synthetic sample values)
+- `POST /api/demo/assessments` (public real assessment engine; does not persist to private audit history)
+- `GET /api/model-info` (protected)
+- `GET /api/config/modules` (protected)
+- `POST /api/risk/predict` (protected; stores a private audit record)
+- `POST /api/risk/explain` (protected)
 - `GET /api/audit?limit=20&offset=0`
 - `GET /api/audit/{audit_id}`
 - `GET /api/audit/{audit_id}/events`
@@ -118,7 +126,7 @@ The service provides:
 - `GET /api/summary`
 - `GET /api/system/status`
 
-Send the configured key using the `X-API-Key` header. Prediction input must contain every feature declared by the selected module and no undeclared fields. Invalid schemas return HTTP 422; missing audit IDs return HTTP 404.
+Send the configured key using the `X-API-Key` header for protected endpoints. Prediction input must contain every feature declared by the selected module and no undeclared fields; numeric values must be finite and in range. Invalid schemas return HTTP 422; missing audit IDs return HTTP 404. Public demo requests are bounded by schema validation but do not currently have a distributed rate limiter; configure edge-level rate limiting before promoting the service beyond a low-traffic portfolio demo.
 
 Example payload:
 

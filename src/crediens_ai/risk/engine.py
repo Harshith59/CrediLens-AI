@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from datetime import datetime, timezone
 from typing import Any, Dict, List
+from uuid import uuid4
 
 import pandas as pd
 
@@ -73,6 +74,7 @@ class RiskAssessmentEngine:
                 "model_version": configured.model_version,
                 "policy": self.policy_bands,
                 "categorical_features": configured.categorical_features,
+                "numeric_bounds": configured.numeric_bounds,
                 "monitor_threshold": configured.monitor_threshold,
                 "human_review_threshold": configured.human_review_threshold,
             }
@@ -203,7 +205,7 @@ class RiskAssessmentEngine:
             "final_risk_probability": probability,
             "risk_band": risk_band,
             "policy_outcome": policy,
-            "fairness_status": "AVAILABLE",
+            "fairness_status": "NOT_ASSESSED",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "reviewer": payload.get("reviewer"),
         }
@@ -344,7 +346,7 @@ class RiskAssessmentEngine:
         self.audit_store.update(audit_id, record)
         return record
 
-    def evaluate(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def evaluate(self, payload: Dict[str, Any], *, persist_audit: bool = True) -> Dict[str, Any]:
         errors = self._validate_inputs(payload)
         if errors:
             return {"status": "INVALID_INPUT", "errors": errors}
@@ -382,11 +384,32 @@ class RiskAssessmentEngine:
                         "status": "INVALID_INPUT",
                         "errors": [f"{feature} must be one of: {', '.join(categorical_features[feature])}"],
                     }
-            elif isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            elif isinstance(value, bool) or not isinstance(value, (int, float)):
                 return {
                     "status": "INVALID_INPUT",
                     "errors": [f"{feature} must be a finite number"],
                 }
+            else:
+                try:
+                    finite_value = math.isfinite(value)
+                except OverflowError:
+                    finite_value = False
+                if not finite_value:
+                    return {
+                        "status": "INVALID_INPUT",
+                        "errors": [f"{feature} must be a finite number"],
+                    }
+                lower, upper = module.get("numeric_bounds", {}).get(feature, (0, None))
+                if value < lower:
+                    return {
+                        "status": "INVALID_INPUT",
+                        "errors": [f"{feature} must be at least {lower}"],
+                    }
+                if upper is not None and value > upper:
+                    return {
+                        "status": "INVALID_INPUT",
+                        "errors": [f"{feature} must be at most {upper}"],
+                    }
         payload = {**payload, "industry": industry, "risk_type": risk_type}
         model_version = payload.get("model_version") or module.get(
             "default_model",
@@ -409,9 +432,15 @@ class RiskAssessmentEngine:
                 }
             sample = pd.DataFrame([{feature: data[feature] for feature in feature_columns}])
             try:
-                probability = float(registered_model["model"].predict_proba(sample)[0, 1])
-            except ValueError as error:
+                probabilities = registered_model["model"].predict_proba(sample)
+                probability = float(probabilities[0][1])
+            except (ValueError, IndexError, TypeError, OverflowError) as error:
                 return {"status": "INVALID_INPUT", "errors": [f"Model input is invalid: {error}"]}
+            if not math.isfinite(probability) or not 0.0 <= probability <= 1.0:
+                return {
+                    "status": "INVALID_INPUT",
+                    "errors": ["Model returned a risk probability outside the valid range [0, 1]"],
+                }
             scoring_method = "MODEL"
         else:
             probability = self._risk_score(data, industry, risk_type)
@@ -420,18 +449,21 @@ class RiskAssessmentEngine:
         audit_payload = {**payload, "model_version": model_version}
         audit = self._build_audit_record(audit_payload, probability, risk_band, policy)
         audit["scoring_method"] = scoring_method
-        audit_id = self.audit_store.add(audit)
+        audit_id = self.audit_store.add(audit) if persist_audit else f"demo-{uuid4()}"
         top_factors = self._top_factors(data, industry, risk_type)
         explanation = self.explanation_engine.shap_global([[data.get(factor, 0) for factor in top_factors]])
         local_explanation = self.explanation_engine.lime_local([[data.get(factor, 0) for factor in top_factors]], [1])
         protected_group = payload.get("protected_group")
         fairness = {
-            "status": "AVAILABLE",
-            "gap": 0.0,
+            "status": "NOT_ASSESSED",
+            "gap": None,
             "group_rates": {},
+            "sample_counts": {},
+            "notes": "Fairness requires sufficient observations across multiple groups; no group data was provided.",
         }
         if protected_group is not None:
             fairness = self.fairness_engine.demographic_parity_gap([protected_group], [probability], threshold=0.5)
+        audit["fairness_status"] = fairness["status"]
         assessment = {
             "status": "SUCCESS",
             "industry": industry,
@@ -464,7 +496,8 @@ class RiskAssessmentEngine:
         assessment["report"] = ReportBuilder.build_json_report(assessment)
         assessment["html_report"] = ReportBuilder.build_html_report(assessment)
         assessment["dashboard"] = DashboardApp.build_summary(assessment)
-        self.audit_store.update(audit_id, {**audit, **assessment})
+        if persist_audit:
+            self.audit_store.update(audit_id, {**audit, **assessment})
         return assessment
 
     def _top_factors(self, data: Dict[str, Any], industry: str, risk_type: str) -> List[str]:

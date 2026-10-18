@@ -8,7 +8,5 @@ services:
     startCommand: python start_server.py
     healthCheckPath: /health
     envVars:
-      - key: CREDILENS_API_KEYS
-        sync: false
       - key: PYTHONUNBUFFERED
         value: "1"

@@ -142,12 +142,30 @@ class RiskPlatformTests(unittest.TestCase):
             "risk_type": "PROJECT",
             "data": {**base_data, "bug_count": float("inf")},
         })
+        unrepresentable_integer = self.engine.evaluate({
+            "industry": "IT",
+            "risk_type": "PROJECT",
+            "data": {**base_data, "bug_count": 10 ** 400},
+        })
+        out_of_range = self.engine.evaluate({
+            "industry": "IT",
+            "risk_type": "PROJECT",
+            "data": {**base_data, "test_coverage": 101},
+        })
+        negative_input = self.engine.evaluate({
+            "industry": "IT",
+            "risk_type": "PROJECT",
+            "data": {**base_data, "team_size": -1},
+        })
 
         self.assertEqual(missing["status"], "INVALID_INPUT")
         self.assertIn("Missing required fields", missing["errors"][0])
         self.assertIn("Unexpected fields", extra["errors"][0])
         self.assertIn("technical_debt must be one of", invalid_category["errors"][0])
         self.assertIn("bug_count must be a finite number", invalid_number["errors"][0])
+        self.assertIn("bug_count must be a finite number", unrepresentable_integer["errors"][0])
+        self.assertIn("test_coverage must be at most 100", out_of_range["errors"][0])
+        self.assertIn("team_size must be at least 0", negative_input["errors"][0])
 
     def test_policy_band_boundaries_have_no_gaps(self):
         bands = self.engine.resolve_module("IT", "PROJECT")["policy"]
@@ -230,6 +248,35 @@ class RiskPlatformTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "INVALID_INPUT")
         self.assertIn("Missing required fields", result["errors"][0])
+
+    def test_registered_model_rejects_probability_outside_valid_range(self):
+        class InvalidProbabilityModel:
+            def predict_proba(self, _sample):
+                return [[0.0, 1.2]]
+
+        self.engine.register_model(
+            industry="IT",
+            risk_type="PROJECT",
+            model_version="project-risk-v1",
+            model=InvalidProbabilityModel(),
+            feature_columns=["team_size"],
+        )
+
+        result = self.engine.evaluate({
+            "industry": "IT",
+            "risk_type": "PROJECT",
+            "data": {
+                "team_size": 12,
+                "bug_count": 45,
+                "critical_bugs": 8,
+                "pending_tasks": 28,
+                "test_coverage": 61,
+                "technical_debt": "High",
+            },
+        })
+
+        self.assertEqual(result["status"], "INVALID_INPUT")
+        self.assertIn("outside the valid range", result["errors"][0])
 
     def test_unregistered_requested_model_version_is_rejected(self):
         result = self.engine.evaluate({

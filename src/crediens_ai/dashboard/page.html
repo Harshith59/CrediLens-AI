@@ -35,6 +35,29 @@
     .connection-form summary { color: var(--blue); font-size: 12px; cursor: pointer; white-space: nowrap; }
     .connection-help { position: absolute; z-index: 2; right: 0; top: 24px; width: min(340px, 80vw); padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: white; box-shadow: 0 6px 18px #173d501a; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .connection-status { min-width: 94px; font-size: 12px; }
+    .demo-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; padding: 12px 16px; border: 1px solid #bbd9c8; border-radius: 10px; background: #eff8f2; }
+    .demo-banner strong { display: block; font-size: 14px; }
+    .demo-banner p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .demo-label { border-radius: 999px; padding: 5px 10px; background: #dcefe3; color: #17643e; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .workspace-access { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 14px; }
+    .workspace-access summary { color: var(--blue); cursor: pointer; font-size: 13px; font-weight: 600; }
+    .workspace-panel { max-width: 700px; margin-top: 12px; padding: 16px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+    .workspace-login { display: flex; align-items: end; gap: 9px; }
+    .workspace-login label { flex: 1; }
+    .workspace-login input { display: block; margin-top: 6px; }
+    .workspace-status { margin-top: 8px; }
+    .sample-note { margin: 8px 0; color: var(--muted); font-size: 12px; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 16px; }
+    .result-metric { padding: 13px; border: 1px solid var(--line); border-radius: 8px; background: #f8fafb; }
+    .result-metric .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+    .result-metric strong { display: block; margin-top: 5px; font-size: 20px; }
+    .result-explanation { margin-top: 12px; padding: 12px; border-left: 3px solid var(--blue); background: #f3f8fa; font-size: 13px; line-height: 1.5; }
+    .factor-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; padding: 0; list-style: none; }
+    .factor-list li { padding: 8px 10px; border-radius: 6px; background: #f2f6f8; font-size: 12px; }
+    .factor-list strong { display: block; margin-top: 3px; }
+    .result-caveat { color: var(--muted); font-size: 11px; }
+    .spinner { display: inline-block; width: 14px; height: 14px; margin-right: 6px; border: 2px solid #9db7c4; border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .tabs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
     .tab { padding: 10px 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font: inherit; }
     .tab[aria-selected="true"] { border-color: var(--blue); color: var(--blue); font-weight: 650; }
@@ -64,7 +87,8 @@
     .module-card { padding: 13px 15px; background: var(--paper); border: 1px solid var(--line); border-radius: 9px; }
     .module-card h3 { margin: 0 0 9px; font-size: 13px; }
     .module-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-    .module-tag { border-radius: 5px; padding: 4px 7px; background: #eaf1f5; color: var(--navy); font-size: 11px; font-weight: 600; }
+    .module-tag { border: 0; border-radius: 5px; padding: 5px 8px; background: #eaf1f5; color: var(--navy); font-size: 11px; font-weight: 600; cursor: pointer; }
+    .module-tag:hover, .module-tag:focus-visible { background: #d8e9f0; outline: 2px solid var(--blue); outline-offset: 2px; }
     .empty-state { padding: 16px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; }
     .error { color: var(--red); white-space: pre-wrap; }
     .success { color: var(--green); }
@@ -85,6 +109,8 @@
       .connection-form input { width: 100%; }
       .connection-form details { margin: 4px 0; }
       .connection-status { margin-left: auto; }
+      .demo-banner { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .workspace-login { align-items: stretch; flex-direction: column; }
       .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 420px) {
@@ -97,27 +123,19 @@
 <body>
   <header>
     <h1>CrediLens AI</h1>
-    <p>Risk assessment · explainability · governance · audit</p>
+    <p>Public risk assessment demo · synthetic inputs · real backend scoring</p>
   </header>
   <main>
-    <section class="connection" aria-label="API connection">
-      <div class="connection-copy">
-        <strong>Connect to your risk workspace</strong>
-        <p>Modules are visible below. Connect to run assessments and load private audit history.</p>
+    <section class="demo-banner" aria-label="Public demonstration notice">
+      <div>
+        <strong>Explore the public demonstration</strong>
+        <p>Run the actual assessment engine with sample or your own test inputs. Demo results are not saved to private audit history.</p>
       </div>
-      <div class="connection-form">
-        <input id="api-key" type="password" autocomplete="current-password" aria-label="Analyst API key" placeholder="Paste analyst API key">
-        <button id="connect" class="primary" type="button">Connect</button>
-        <details>
-          <summary>Where do I get a key?</summary>
-          <div class="connection-help">Ask the person who deployed this app for an analyst API key. Enter the key itself, not the full JSON value from Render and not your GitHub or Render password. If Connect reports authentication is not configured or invalid, the deployer must set a valid <code>CREDILENS_API_KEYS</code> JSON map in Render. Each key must be at least 32 characters and map to a role (analyst, reviewer, or admin) and a non-empty subject. If a key was exposed, generate a replacement locally and update the Render secret. Never paste the key or JSON into chat.</div>
-        </details>
-        <span id="connection-status" class="notice connection-status" role="status" aria-live="polite">Not connected</span>
-      </div>
+      <span class="demo-label">SYNTHETIC DEMO</span>
     </section>
     <nav class="tabs" role="tablist" aria-label="Dashboard">
       <button class="tab" role="tab" aria-selected="true" data-panel="overview">Overview</button>
-      <button class="tab" role="tab" aria-selected="false" data-panel="assessment" disabled>Assessment</button>
+      <button class="tab" role="tab" aria-selected="false" data-panel="assessment">Try an assessment</button>
       <button class="tab" role="tab" aria-selected="false" data-panel="audit" disabled>Audit &amp; compliance</button>
       <button class="tab" role="tab" aria-selected="false" data-panel="models" disabled>Models &amp; configuration</button>
     </nav>
@@ -126,31 +144,36 @@
       <div class="section">
         <div class="overview-heading">
           <h2>Available risk services</h2>
-          <span class="notice">Choose a module after connecting to begin an assessment.</span>
+          <span class="notice">Select a module to start with synthetic sample inputs.</span>
         </div>
         <div id="module-catalog" class="module-grid">
           <div class="empty-state">Loading available risk services…</div>
         </div>
       </div>
       <div class="section">
-        <h2>Recent assessments</h2>
-        <div id="recent-audits" class="table-wrap empty-state">Connect with an analyst API key to load assessment history.</div>
+        <h2>About this demo</h2>
+        <p class="notice">The API runs the project’s real scoring implementation. Where no trained model is registered, results use the module’s rule-based heuristic and are labelled accordingly. Demo assessments are not written to private audit records.</p>
       </div>
     </section>
     <section id="assessment" class="panel">
       <div class="section">
-        <h2>New risk assessment</h2>
-        <p class="notice">Connect with an analyst API key to unlock assessment tools.</p>
+        <h2>Try a risk assessment</h2>
+        <p class="notice">Use the sample or enter synthetic test values. This public mode never stores results in the protected workspace.</p>
         <form id="assessment-form">
           <div class="fields">
             <div><label for="industry">Industry</label><select id="industry" required></select></div>
             <div><label for="risk-type">Risk type</label><select id="risk-type" required></select></div>
-            <div><label for="application-id">Application reference (optional)</label><input id="application-id" maxlength="128"></div>
           </div>
           <div id="feature-fields" class="fields"></div>
-          <div class="actions"><button class="primary" type="submit">Run assessment</button></div>
+          <p id="sample-label" class="sample-note">Loading synthetic sample inputs…</p>
+          <div class="actions">
+            <button id="load-sample" class="secondary" type="button">Load sample case</button>
+            <button id="reset-form" class="secondary" type="button">Reset inputs</button>
+            <button id="run-demo" class="primary" type="submit">Run public demo assessment</button>
+            <button id="run-protected" class="primary" type="button" hidden>Save assessment to protected audit</button>
+          </div>
         </form>
-        <div id="assessment-result" aria-live="polite"></div>
+        <div id="assessment-result" aria-live="polite" aria-atomic="true"></div>
       </div>
     </section>
     <section id="audit" class="panel">
@@ -166,30 +189,59 @@
       <div id="model-details" class="section"><h2>Models &amp; configuration</h2><p class="notice">Connect with an analyst API key to load model information.</p></div>
     </section>
     <p id="page-error" class="error" role="alert"></p>
+    <details class="workspace-access">
+      <summary>Staff workspace access — private history and reviewer tools</summary>
+      <div class="workspace-panel">
+        <p class="notice">Private audit records, review decisions, and model configuration remain protected. Enter a configured staff API key only when you need these features; it is held in memory for this page and is not saved in browser storage.</p>
+        <div class="workspace-login">
+          <label for="api-key">Staff API key
+            <input id="api-key" type="password" autocomplete="off" placeholder="Enter analyst or reviewer key">
+          </label>
+          <button id="connect" class="primary" type="button">Open workspace</button>
+        </div>
+        <div class="actions">
+          <button id="close-workspace" class="secondary" type="button" hidden>Close workspace</button>
+        </div>
+        <p id="connection-status" class="notice workspace-status" role="status" aria-live="polite">Workspace not connected</p>
+        <p id="workspace-error" class="error" role="alert"></p>
+      </div>
+    </details>
   </main>
   <script>
     const apiKeyInput = document.getElementById("api-key");
     const connectButton = document.getElementById("connect");
     const statusText = document.getElementById("connection-status");
     const errorBox = document.getElementById("page-error");
+    const workspaceError = document.getElementById("workspace-error");
     const industrySelect = document.getElementById("industry");
     const riskSelect = document.getElementById("risk-type");
     let modules = {};
     let currentAssessment = null;
-
-    apiKeyInput.value = sessionStorage.getItem("credilens-api-key") || "";
+    let workspaceApiKey = "";
 
     async function api(path, options = {}) {
-      const response = await fetch(path, {
+      const headers = { ...(options.headers || {}) };
+      if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+      let response;
+      try {
+        response = await fetch(path, {
         ...options,
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-Key": sessionStorage.getItem("credilens-api-key") || "",
-          ...(options.headers || {})
-        }
-      });
+          headers,
+          signal: options.signal || AbortSignal.timeout(20000)
+        });
+      } catch (error) {
+        if (error.name === "TimeoutError") throw new Error("The request timed out. Please try again.");
+        if (error.name === "AbortError") throw new Error("The request was cancelled.");
+        if (error instanceof TypeError) throw new Error("The service could not be reached. Check your connection and retry.");
+        throw error;
+      }
       const contentType = response.headers.get("content-type") || "";
-      const body = contentType.includes("application/json") ? await response.json() : await response.text();
+      let body;
+      try {
+        body = contentType.includes("application/json") ? await response.json() : await response.text();
+      } catch {
+        throw new Error("The server returned an unreadable response. Please retry.");
+      }
       if (!response.ok) {
         const reason = typeof body === "object" && body !== null ? body.detail : body;
         throw new Error(Array.isArray(reason) ? reason.join("\n") : String(reason || response.statusText));
@@ -197,12 +249,20 @@
       return body;
     }
 
+    function workspaceApi(path, options = {}) {
+      if (!workspaceApiKey) throw new Error("Open the protected workspace to continue.");
+      return api(path, {
+        ...options,
+        headers: { ...(options.headers || {}), "X-API-Key": workspaceApiKey }
+      });
+    }
+
     function setText(element, value) {
       element.textContent = value === null || value === undefined ? "—" : String(value);
     }
 
-    function showError(error) {
-      setText(errorBox, error.message || error);
+    function showWorkspaceError(error) {
+      setText(workspaceError, error.message || error);
     }
 
     function badge(value) {
@@ -254,7 +314,7 @@
         button.className = "secondary";
         button.type = "button";
         setText(button, "Details");
-        button.addEventListener("click", () => loadAudit(record.audit_id));
+        button.addEventListener("click", () => loadAudit(record.audit_id).catch(showWorkspaceError));
         action.appendChild(button);
         row.appendChild(action);
         body.appendChild(row);
@@ -289,12 +349,16 @@
     async function loadCatalog() {
       const target = document.getElementById("module-catalog");
       try {
-        const catalog = await api("/api/catalog");
+        const [catalog, demoCatalog] = await Promise.all([
+          api("/api/catalog"),
+          api("/api/demo/modules")
+        ]);
+        modules = demoCatalog.modules;
         renderSummaryCards([
           ["Supported industries", catalog.industries.length],
           ["Risk modules", catalog.module_count],
-          ["Assessments", "—", "Connect to view private records"],
-          ["Pending reviews", "—", "Connect to view private records"]
+          ["Demo data", "Synthetic", "Public samples only"],
+          ["History", "Not saved", "Private audit remains protected"]
         ]);
         target.replaceChildren();
         Object.entries(catalog.modules).forEach(([industry, riskTypes]) => {
@@ -305,33 +369,61 @@
           const tags = document.createElement("div");
           tags.className = "module-tags";
           riskTypes.forEach((riskType) => {
-            const tag = document.createElement("span");
-            tag.className = "module-tag";
+            const tag = document.createElement("button");
+            tag.className = "module-tag module-select";
+            tag.type = "button";
+            tag.setAttribute("aria-label", `Try ${industry} ${riskType.replaceAll("_", " ")} assessment`);
             setText(tag, riskType.replaceAll("_", " "));
+            tag.addEventListener("click", () => selectModule(industry, riskType));
             tags.appendChild(tag);
           });
           card.append(heading, tags);
           target.appendChild(card);
         });
+        industrySelect.replaceChildren();
+        catalog.industries.forEach((industry) => {
+          const option = document.createElement("option");
+          option.value = industry;
+          setText(option, industry.replaceAll("_", " "));
+          industrySelect.appendChild(option);
+        });
+        renderRiskTypes();
+        document.getElementById("sample-label").textContent = demoCatalog.sample_data_label;
       } catch (error) {
         target.classList.add("error");
-        setText(target, `Unable to load the public service catalog: ${error.message || error}`);
+        target.replaceChildren();
+        const message = document.createElement("p");
+        setText(message, `Unable to load the public service catalog: ${error.message || error}`);
+        const retry = document.createElement("button");
+        retry.className = "secondary";
+        retry.type = "button";
+        setText(retry, "Retry catalog");
+        retry.addEventListener("click", loadCatalog);
+        target.append(message, retry);
       }
     }
 
     async function loadOverview() {
-      const [summary, audits] = await Promise.all([api("/api/summary"), api("/api/audit?limit=8")]);
+      const summary = await workspaceApi("/api/summary");
       renderSummaryCards([
         ["Total assessments", summary.total_audits],
         ["Awaiting human review", summary.pending_human_review],
         ["Configured industries", summary.total_industries],
         ["Enabled modules", summary.module_count]
       ]);
-      makeAuditTable(audits.items, document.getElementById("recent-audits"));
     }
 
     function currentModule() {
       return modules[industrySelect.value]?.[riskSelect.value] || null;
+    }
+
+    function selectModule(industry, riskType) {
+      industrySelect.value = industry;
+      renderRiskTypes();
+      riskSelect.value = riskType;
+      renderFeatureFields();
+      fillSampleCase();
+      document.querySelector('.tab[data-panel="assessment"]').click();
     }
 
     function renderRiskTypes() {
@@ -370,19 +462,32 @@
           input = document.createElement("input");
           input.type = "number";
           input.step = "any";
+          input.min = "0";
+          const bounds = module.numeric_bounds?.[feature];
+          if (bounds?.[1] !== null && bounds?.[1] !== undefined) input.max = String(bounds[1]);
         }
         input.id = id;
         input.required = true;
         wrapper.append(label, input);
         container.appendChild(wrapper);
       });
+      fillSampleCase();
+    }
+
+    function fillSampleCase() {
+      const module = currentModule();
+      if (!module) return;
+      module.features.forEach((feature) => {
+        const input = document.getElementById(`feature-${feature}`);
+        if (input && module.sample[feature] !== undefined) input.value = module.sample[feature];
+      });
     }
 
     async function loadAudit(auditId) {
       const [record, events, compliance] = await Promise.all([
-        api(`/api/audit/${encodeURIComponent(auditId)}`),
-        api(`/api/audit/${encodeURIComponent(auditId)}/events`),
-        api(`/api/compliance/${encodeURIComponent(auditId)}`)
+        workspaceApi(`/api/audit/${encodeURIComponent(auditId)}`),
+        workspaceApi(`/api/audit/${encodeURIComponent(auditId)}/events`),
+        workspaceApi(`/api/compliance/${encodeURIComponent(auditId)}`)
       ]);
       const detail = document.getElementById("audit-detail");
       detail.hidden = false;
@@ -439,7 +544,7 @@
         setText(reviewButton, "Record review");
         reviewButton.addEventListener("click", async () => {
           try {
-            await api(`/api/audit/${encodeURIComponent(record.audit_id)}/review`, {
+            await workspaceApi(`/api/audit/${encodeURIComponent(record.audit_id)}/review`, {
               method: "POST",
               body: JSON.stringify({
                 final_decision: document.getElementById("review-decision").value,
@@ -448,7 +553,7 @@
             });
             await loadAudit(record.audit_id);
             await loadOverview();
-          } catch (error) { showError(error); }
+          } catch (error) { showWorkspaceError(error); }
         });
         detail.append(title, metadata, actions, reviewTitle, decision, comment, reviewButton, checks, history);
       } else {
@@ -459,14 +564,22 @@
     async function downloadReport(auditId, format) {
       try {
         const response = await fetch(`/api/reports/${encodeURIComponent(auditId)}/${format}`, {
-          headers: { "X-API-Key": sessionStorage.getItem("credilens-api-key") || "" }
+          headers: { "X-API-Key": workspaceApiKey },
+          signal: AbortSignal.timeout(20000)
         });
-        if (!response.ok) throw new Error(`Report request failed (${response.status})`);
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body.detail || `Report request failed (${response.status})`);
+        }
         if (format === "json") {
           const data = await response.json();
-          const pre = document.createElement("pre");
-          setText(pre, JSON.stringify(data, null, 2));
-          document.getElementById("audit-detail").appendChild(pre);
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `credilens-${auditId}.json`;
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
           return;
         }
         const blob = await response.blob();
@@ -475,52 +588,50 @@
         link.href = url;
         link.download = `credilens-${auditId}.${format}`;
         link.click();
-        URL.revokeObjectURL(url);
-      } catch (error) { showError(error); }
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) { showWorkspaceError(error); }
     }
 
     async function connect() {
-      errorBox.textContent = "";
+      workspaceError.textContent = "";
       statusText.textContent = "Connecting…";
-      statusText.className = "notice connection-status";
+      statusText.className = "notice workspace-status";
       apiKeyInput.value = apiKeyInput.value.trim();
       if (!apiKeyInput.value) {
-        statusText.textContent = "Not connected";
-        showError(new Error("Enter an analyst API key to unlock assessments and private records."));
+        statusText.textContent = "Workspace not connected";
+        showWorkspaceError(new Error("Enter a configured staff API key to open private workspace features."));
         return;
       }
-      sessionStorage.setItem("credilens-api-key", apiKeyInput.value);
+      workspaceApiKey = apiKeyInput.value;
       try {
-        const configuration = await api("/api/config/modules");
-        modules = configuration.modules;
-        industrySelect.replaceChildren();
-        Object.keys(modules).forEach((industry) => {
-          const option = document.createElement("option");
-          option.value = industry;
-          setText(option, industry);
-          industrySelect.appendChild(option);
-        });
-        renderRiskTypes();
+        await workspaceApi("/api/config/modules");
         await Promise.all([loadOverview(), loadAuditTable(), loadModels()]);
-        document.querySelectorAll('.tab[data-panel="assessment"], .tab[data-panel="audit"], .tab[data-panel="models"]').forEach((tab) => {
+        document.querySelectorAll('.tab[data-panel="audit"], .tab[data-panel="models"]').forEach((tab) => {
           tab.disabled = false;
         });
+        document.getElementById("run-protected").hidden = false;
+        document.getElementById("close-workspace").hidden = false;
         statusText.textContent = "Connected";
-        statusText.className = "success";
+        statusText.className = "success workspace-status";
       } catch (error) {
+        workspaceApiKey = "";
+        apiKeyInput.value = "";
         statusText.textContent = "Connection failed";
-        statusText.className = "error";
-        showError(error);
+        statusText.className = "error workspace-status";
+        showWorkspaceError(error);
       }
     }
 
     async function loadAuditTable() {
-      const page = await api("/api/audit?limit=50");
+      const page = await workspaceApi("/api/audit?limit=50");
       makeAuditTable(page.items, document.getElementById("audit-table"));
     }
 
     async function loadModels() {
-      const [info, configuration] = await Promise.all([api("/api/model-info"), api("/api/config/modules")]);
+      const [info, configuration] = await Promise.all([
+        workspaceApi("/api/model-info"),
+        workspaceApi("/api/config/modules")
+      ]);
       const target = document.getElementById("model-details");
       target.replaceChildren();
       const title = document.createElement("h2");
@@ -534,7 +645,193 @@
       target.append(title, modelView);
     }
 
+    function recommendationFor(decision) {
+      if (decision === "HUMAN_REVIEW") return "Policy requires qualified human review before a real-world decision.";
+      if (decision === "MONITOR") return "Policy suggests monitoring and reassessing as conditions change.";
+      return "Configured thresholds did not trigger monitoring or human review. Independently review the evidence before any real-world decision.";
+    }
+
+    function renderAssessmentResult(result, protectedAuditId = null) {
+      if (
+        result.status !== "SUCCESS"
+        || !Number.isFinite(result.risk_probability)
+        || result.risk_probability < 0
+        || result.risk_probability > 1
+      ) {
+        throw new Error("The assessment response was incomplete or outside the valid score range.");
+      }
+      const target = document.getElementById("assessment-result");
+      target.replaceChildren();
+      const title = document.createElement("h3");
+      setText(title, `Assessment result · ${result.industry} / ${result.risk_type}`);
+      const metrics = document.createElement("div");
+      metrics.className = "result-grid";
+      [
+        ["Risk score", new Intl.NumberFormat(undefined, { style: "percent", maximumFractionDigits: 1 }).format(result.risk_probability)],
+        ["Risk category", result.risk_level],
+        ["Policy outcome", result.decision],
+        ["Scoring method", result.scoring_method === "MODEL" ? "Trained model" : "Rule-based heuristic"]
+      ].forEach(([label, value]) => {
+        const metric = document.createElement("div");
+        metric.className = "result-metric";
+        const caption = document.createElement("div");
+        caption.className = "label";
+        setText(caption, label);
+        const content = document.createElement("strong");
+        setText(content, value);
+        metric.append(caption, content);
+        metrics.appendChild(metric);
+      });
+      const explanation = document.createElement("div");
+      explanation.className = "result-explanation";
+      setText(explanation, result.method_description || "This score is the actual output returned by the assessment engine.");
+      const nextStep = document.createElement("p");
+      nextStep.className = "notice";
+      const nextStepLabel = document.createElement("strong");
+      setText(nextStepLabel, "Suggested next step: ");
+      nextStep.append(nextStepLabel, document.createTextNode(result.recommendation || recommendationFor(result.decision)));
+      const factorsHeading = document.createElement("h3");
+      setText(factorsHeading, "Assessment inputs used");
+      const factorList = document.createElement("ul");
+      factorList.className = "factor-list";
+      (result.input_factors || []).forEach((factor) => {
+        const item = document.createElement("li");
+        setText(item, factor.name.replaceAll("_", " "));
+        const value = document.createElement("strong");
+        setText(value, factor.value);
+        item.appendChild(value);
+        factorList.appendChild(item);
+      });
+      const caveat = document.createElement("p");
+      caveat.className = "result-caveat";
+      setText(caveat, `Automated checks: ${result.automated_check_status || "not available"}. These internal checks are not legal certification. Demonstration results must not be used for real decisions.`);
+      const download = document.createElement("button");
+      download.className = "secondary";
+      download.type = "button";
+      setText(download, "Download JSON report");
+      download.addEventListener("click", () => {
+        if (protectedAuditId) {
+          downloadReport(protectedAuditId, "json");
+          return;
+        }
+        const blob = new Blob([JSON.stringify(result.report, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `credilens-demo-${result.industry.toLowerCase()}-${result.risk_type.toLowerCase()}.json`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+      target.append(title, metrics, explanation, nextStep, factorsHeading, factorList, caveat, download);
+    }
+
+    function assessmentPayload() {
+      const module = currentModule();
+      if (!module) throw new Error("Select an available industry and risk type first.");
+      const data = {};
+      module.features.forEach((feature) => {
+        const input = document.getElementById(`feature-${feature}`);
+        if (!input || input.value === "") throw new Error(`Enter a value for ${feature.replaceAll("_", " ")}.`);
+        const value = input.tagName === "SELECT" ? input.value : Number(input.value);
+        if (typeof value === "number" && !Number.isFinite(value)) {
+          throw new Error(`${feature.replaceAll("_", " ")} must be a finite number.`);
+        }
+        data[feature] = value;
+      });
+      return { industry: industrySelect.value, risk_type: riskSelect.value, data };
+    }
+
+    async function runAssessment(protectedMode) {
+      const demoButton = document.getElementById("run-demo");
+      const protectedButton = document.getElementById("run-protected");
+      const resultTarget = document.getElementById("assessment-result");
+      errorBox.textContent = "";
+      workspaceError.textContent = "";
+      let payload;
+      try {
+        payload = assessmentPayload();
+      } catch (error) {
+        (protectedMode ? workspaceError : errorBox).textContent = error.message || String(error);
+        return;
+      }
+      demoButton.disabled = true;
+      protectedButton.disabled = true;
+      resultTarget.replaceChildren();
+      const loading = document.createElement("p");
+      loading.className = "notice";
+      const spinner = document.createElement("span");
+      spinner.className = "spinner";
+      spinner.setAttribute("aria-hidden", "true");
+      loading.append(spinner, document.createTextNode("Running assessment…"));
+      resultTarget.appendChild(loading);
+      try {
+        if (protectedMode) {
+          const result = await workspaceApi("/api/risk/predict", {
+            method: "POST",
+            body: JSON.stringify(payload)
+          });
+          renderAssessmentResult({
+            status: result.status,
+            industry: result.industry,
+            risk_type: result.risk_type,
+            risk_probability: result.risk_probability,
+            risk_level: result.risk_level,
+            decision: result.decision,
+            scoring_method: result.scoring_method,
+            method_description: result.scoring_method === "MODEL"
+              ? "The registered model returned this score. Review the protected workspace for configured explanations and evidence."
+              : "A rule-based heuristic produced this score; it is not a trained-model prediction. Inputs are not causal attributions.",
+            input_factors: payload.data && Object.entries(payload.data).map(([name, value]) => ({ name, value })),
+            recommendation: recommendationFor(result.decision),
+            automated_check_status: result.compliance_status
+          }, result.audit_id);
+          await Promise.all([loadOverview(), loadAuditTable()]);
+        } else {
+          currentAssessment = await api("/api/demo/assessments", {
+            method: "POST",
+            body: JSON.stringify(payload)
+          });
+          renderAssessmentResult(currentAssessment);
+        }
+      } catch (error) {
+        resultTarget.replaceChildren();
+        const errorMessage = document.createElement("p");
+        errorMessage.className = "error";
+        setText(errorMessage, error.message || error);
+        const retry = document.createElement("button");
+        retry.className = "secondary";
+        retry.type = "button";
+        setText(retry, "Retry assessment");
+        retry.addEventListener("click", () => runAssessment(protectedMode));
+        resultTarget.append(errorMessage, retry);
+      } finally {
+        demoButton.disabled = false;
+        protectedButton.disabled = false;
+      }
+    }
+
     connectButton.addEventListener("click", connect);
+    document.getElementById("close-workspace").addEventListener("click", () => {
+      workspaceApiKey = "";
+      apiKeyInput.value = "";
+      document.getElementById("close-workspace").hidden = true;
+      document.getElementById("run-protected").hidden = true;
+      document.querySelectorAll('.tab[data-panel="audit"], .tab[data-panel="models"]').forEach((tab) => {
+        tab.disabled = true;
+        tab.setAttribute("aria-selected", "false");
+      });
+      document.querySelectorAll(".panel").forEach((panel) => panel.classList.toggle("active", panel.id === "overview"));
+      document.querySelector('.tab[data-panel="overview"]').setAttribute("aria-selected", "true");
+      document.getElementById("audit-table").replaceChildren();
+      document.getElementById("audit-table").classList.add("empty-state");
+      setText(document.getElementById("audit-table"), "Private audit records are hidden until staff sign in.");
+      document.getElementById("audit-detail").replaceChildren();
+      document.getElementById("audit-detail").hidden = true;
+      document.getElementById("model-details").replaceChildren();
+      statusText.textContent = "Workspace closed";
+      statusText.className = "notice workspace-status";
+      loadCatalog();
+    });
     document.querySelectorAll(".tab").forEach((button) => {
       button.addEventListener("click", () => {
         document.querySelectorAll(".tab").forEach((tab) => tab.setAttribute("aria-selected", String(tab === button)));
@@ -543,45 +840,27 @@
     });
     industrySelect.addEventListener("change", renderRiskTypes);
     riskSelect.addEventListener("change", renderFeatureFields);
-    document.getElementById("refresh-audits").addEventListener("click", () => loadAuditTable().catch(showError));
+    document.getElementById("refresh-audits").addEventListener("click", () => loadAuditTable().catch(showWorkspaceError));
     document.getElementById("assessment-form").addEventListener("submit", async (event) => {
       event.preventDefault();
+      await runAssessment(false);
+    });
+    document.getElementById("run-protected").addEventListener("click", () => runAssessment(true));
+    document.getElementById("load-sample").addEventListener("click", fillSampleCase);
+    document.getElementById("reset-form").addEventListener("click", () => {
+      currentAssessment = null;
+      document.getElementById("assessment-result").replaceChildren();
       errorBox.textContent = "";
+      renderFeatureFields();
       const module = currentModule();
-      const data = {};
-      module.features.forEach((feature) => {
-        const field = document.getElementById(`feature-${feature}`);
-        data[feature] = field.tagName === "SELECT" ? field.value : Number(field.value);
+      module?.features.forEach((feature) => {
+        const input = document.getElementById(`feature-${feature}`);
+        if (input.tagName === "SELECT") input.selectedIndex = 0;
+        else input.value = "";
       });
-      try {
-        currentAssessment = await api("/api/risk/predict", {
-          method: "POST",
-          body: JSON.stringify({
-            industry: industrySelect.value,
-            risk_type: riskSelect.value,
-            application_id: document.getElementById("application-id").value || null,
-            data
-          })
-        });
-        const result = document.getElementById("assessment-result");
-        result.replaceChildren();
-        const heading = document.createElement("h3");
-        setText(heading, `Risk ${currentAssessment.risk_level} · ${currentAssessment.decision}`);
-        const summary = document.createElement("pre");
-        setText(summary, JSON.stringify({
-          audit_id: currentAssessment.audit_id,
-          risk_probability: currentAssessment.risk_probability,
-          scoring_method: currentAssessment.scoring_method,
-          compliance_status: currentAssessment.compliance_status,
-          top_factors: currentAssessment.top_factors
-        }, null, 2));
-        result.append(heading, summary);
-        await Promise.all([loadOverview(), loadAuditTable()]);
-      } catch (error) { showError(error); }
     });
 
     loadCatalog();
-    if (apiKeyInput.value) connect();
   </script>
 </body>
 </html>
