@@ -55,6 +55,24 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 307)
         self.assertEqual(response.headers["location"], "/dashboard")
 
+    def test_public_catalog_is_available_without_authentication(self):
+        self.client.headers.pop("X-API-Key")
+
+        catalog_response = self.client.get("/api/catalog")
+        protected_response = self.client.get("/api/config/modules")
+        dashboard_response = self.client.get("/dashboard")
+
+        self.assertEqual(catalog_response.status_code, 200)
+        catalog = catalog_response.json()
+        self.assertEqual(catalog["industries"], ["BANKING", "IT", "MANUFACTURING"])
+        self.assertEqual(catalog["module_count"], 7)
+        self.assertEqual(set(catalog["modules"]), set(catalog["industries"]))
+        self.assertEqual(catalog["modules"]["IT"], ["CYBER", "OPERATIONAL", "PROJECT"])
+        self.assertEqual(protected_response.status_code, 401)
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertIn("Available risk services", dashboard_response.text)
+        self.assertIn("Where do I get a key?", dashboard_response.text)
+
     def test_config_and_audit_endpoints(self):
         config_response = self.client.get("/api/config/industries")
         self.assertEqual(config_response.status_code, 200)

@@ -54,7 +54,7 @@ C:/ProgramData/anaconda3/python.exe -m unittest discover -s tests -v
 
 ## API access and browser dashboard
 
-The API requires an analyst, reviewer, or admin API key for all data and configuration endpoints; only `/health` and the static `/dashboard` shell are public. Generate high-entropy keys locally and configure the key-to-role map in the environment before starting the service. Do not commit keys to source control.
+The API requires an analyst, reviewer, or admin API key for private data and configuration endpoints. `/health`, the static `/dashboard` shell, and the metadata-only `/api/catalog` are public; the catalog lists supported industries and risk modules but does not expose audit or model data. Generate high-entropy keys locally and configure the key-to-role map in the environment before starting the service. Do not commit keys to source control.
 
 ```powershell
 $analystKey = "$([guid]::NewGuid().ToString('N'))$([guid]::NewGuid().ToString('N'))"
@@ -73,7 +73,7 @@ $env:CREDILENS_MODEL_ARTIFACT = "models\it\project-risk-v1.joblib"
 & "C:\ProgramData\anaconda3\python.exe" start_server.py
 ```
 
-Open `http://127.0.0.1:8000/dashboard`, paste an analyst/reviewer key, and connect. Analyst keys can submit assessments and read reports/audit history. Reviewer and admin keys can also record a human outcome; the reviewer identity comes from the configured key subject, not from the request body.
+Open `http://127.0.0.1:8000/dashboard` to browse available risk modules without connecting. Paste an analyst/reviewer key to unlock assessments and private audit/model data. Enter the key itself, not the full JSON map configured in the environment. Analyst keys can submit assessments and read reports/audit history. Reviewer and admin keys can also record a human outcome; the reviewer identity comes from the configured key subject, not from the request body.
 
 ## Deploy a free prototype on Render
 
@@ -101,6 +101,7 @@ The service provides:
 
 - `GET /health`
 - `GET /dashboard`
+- `GET /api/catalog` (public supported-industry and risk-module names)
 - `GET /api/model-info`
 - `GET /api/config/modules`
 - `POST /api/risk/predict`

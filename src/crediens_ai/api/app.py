@@ -136,6 +136,20 @@ def dashboard() -> HTMLResponse:
     )
 
 
+@app.get("/api/catalog")
+def public_catalog() -> Dict[str, Any]:
+    industries = engine.registry.get_supported_industries()
+    modules = {
+        industry: engine.registry.get_risk_types(industry)
+        for industry in industries
+    }
+    return {
+        "industries": industries,
+        "modules": modules,
+        "module_count": sum(len(risk_types) for risk_types in modules.values()),
+    }
+
+
 @app.get("/api/model-info", dependencies=[Depends(require_role("analyst"))])
 def model_info() -> Dict[str, Any]:
     return {
