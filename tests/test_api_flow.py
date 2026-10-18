@@ -72,6 +72,7 @@ class ApiFlowTests(unittest.TestCase):
         self.assertEqual(dashboard_response.status_code, 200)
         self.assertIn("Available risk services", dashboard_response.text)
         self.assertIn("Where do I get a key?", dashboard_response.text)
+        self.assertIn("CREDILENS_API_KEYS", dashboard_response.text)
 
     def test_config_and_audit_endpoints(self):
         config_response = self.client.get("/api/config/industries")

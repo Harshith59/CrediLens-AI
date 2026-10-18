@@ -93,7 +93,7 @@ The repository includes a Render Blueprint (`render.yaml`) for a free Python web
 
 5. After deployment, open the generated `https://<service-name>.onrender.com/dashboard` URL and use the analyst or reviewer key.
 
-The Free plan is intended for prototypes, not production: Render spins down inactive free web services, and their filesystems are ephemeral. This app's SQLite audit history will be lost on restarts, spin-downs, or redeployments. No persistent disk or paid database is configured. Free usage quotas apply; check [Render's current free plan limitations](https://render.com/docs/free) and billing controls before deploying. If the API-key secret is not configured, protected API endpoints return HTTP 503.
+The Free plan is intended for prototypes, not production: Render spins down inactive free web services, and their filesystems are ephemeral. This app's SQLite audit history will be lost on restarts, spin-downs, or redeployments. No persistent disk or paid database is configured. Free usage quotas apply; check [Render's current free plan limitations](https://render.com/docs/free) and billing controls before deploying. If the API-key secret is missing or invalid, protected API endpoints return HTTP 503; check that `CREDILENS_API_KEYS` is a JSON object mapping each key (at least 32 characters) to a valid role and non-empty subject.
 
 ## API overview
 

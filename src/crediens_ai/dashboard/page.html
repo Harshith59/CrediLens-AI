@@ -110,7 +110,7 @@
         <button id="connect" class="primary" type="button">Connect</button>
         <details>
           <summary>Where do I get a key?</summary>
-          <div class="connection-help">Ask the person who deployed this app for an analyst API key. Enter the analyst key itself, not the full JSON value from Render and not your GitHub or Render password. If you manage the deployment and no longer have the key, create a new one in Render's Environment settings and update <code>CREDILENS_API_KEYS</code>.</div>
+          <div class="connection-help">Ask the person who deployed this app for an analyst API key. Enter the key itself, not the full JSON value from Render and not your GitHub or Render password. If Connect reports authentication is not configured or invalid, the deployer must set a valid <code>CREDILENS_API_KEYS</code> JSON map in Render. Each key must be at least 32 characters and map to a role (analyst, reviewer, or admin) and a non-empty subject. If a key was exposed, generate a replacement locally and update the Render secret. Never paste the key or JSON into chat.</div>
         </details>
         <span id="connection-status" class="notice connection-status" role="status" aria-live="polite">Not connected</span>
       </div>
