@@ -1,0 +1,13 @@
+.credilens/
+__pycache__/
+*.py[cod]
+*.joblib
+.pytest_cache/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db

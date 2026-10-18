@@ -1,0 +1,40 @@
+MODEL TRAINING SUMMARY
+{
+  "accuracy": 0.9625,
+  "f1": 0.9806,
+  "roc_auc": 0.9079
+}
+
+CONFIG-DRIVEN MODULE SUMMARY
+- BANKING/CREDIT: model=credit-risk-v1 features=5
+- BANKING/FRAUD: model=credit-risk-v1 features=4
+- IT/CYBER: model=project-risk-v1 features=5
+- IT/PROJECT: model=project-risk-v1 features=6
+- MANUFACTURING/EQUIPMENT: model=equipment-risk-v1 features=5
+- MANUFACTURING/SUPPLY_CHAIN: model=equipment-risk-v1 features=4
+
+ASSESSMENT OUTPUT
+{
+  "industry": "IT",
+  "risk_type": "PROJECT",
+  "risk_probability": 0.696,
+  "risk_level": "HIGH",
+  "decision": "HUMAN_REVIEW",
+  "model_version": "project-risk-v1"
+}
+{
+  "industry": "MANUFACTURING",
+  "risk_type": "EQUIPMENT",
+  "risk_probability": 1.0,
+  "risk_level": "HIGH",
+  "decision": "HUMAN_REVIEW",
+  "model_version": "equipment-risk-v1"
+}
+{
+  "industry": "BANKING",
+  "risk_type": "CREDIT",
+  "risk_probability": 0.22,
+  "risk_level": "MEDIUM",
+  "decision": "APPROVE",
+  "model_version": "credit-risk-v1"
+}

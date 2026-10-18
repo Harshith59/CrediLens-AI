@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CrediLens AI — Risk operations</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #142737;
+      --muted: #617485;
+      --line: #dce5eb;
+      --paper: #ffffff;
+      --canvas: #f2f6f8;
+      --blue: #176a8a;
+      --navy: #12374c;
+      --green: #16804c;
+      --amber: #a86700;
+      --red: #ba3434;
+      font-family: "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); }
+    header { background: var(--navy); color: white; padding: 20px max(24px, calc((100vw - 1240px) / 2)); }
+    header h1 { margin: 0; font-size: 21px; letter-spacing: .02em; }
+    header p { margin: 5px 0 0; color: #c0d4df; font-size: 13px; }
+    main { max-width: 1240px; margin: 24px auto; padding: 0 20px 48px; }
+    .toolbar, .tabs { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+    .toolbar { justify-content: flex-end; margin-bottom: 18px; }
+    .toolbar input { width: min(390px, 60vw); }
+    .tabs { border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+    .tab { padding: 10px 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font: inherit; }
+    .tab[aria-selected="true"] { border-color: var(--blue); color: var(--blue); font-weight: 650; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+    .card, .section { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 18px; box-shadow: 0 3px 12px #173d5010; }
+    .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; }
+    .card .value { margin-top: 8px; font-size: 28px; font-weight: 700; }
+    .section { margin-bottom: 16px; }
+    h2 { margin: 0 0 15px; font-size: 17px; }
+    h3 { margin: 18px 0 8px; font-size: 14px; }
+    label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+    input, select, textarea, button { font: inherit; }
+    input, select, textarea { width: 100%; padding: 9px 10px; border: 1px solid #bccbd5; border-radius: 6px; background: white; color: var(--ink); }
+    .toolbar input { width: min(390px, 60vw); }
+    .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-top: 16px; }
+    button.primary { border: 0; border-radius: 6px; padding: 9px 14px; color: white; background: var(--blue); cursor: pointer; font-weight: 600; }
+    button.secondary { border: 1px solid var(--line); border-radius: 6px; padding: 8px 11px; background: white; color: var(--blue); cursor: pointer; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .notice { color: var(--muted); font-size: 13px; }
+    .error { color: var(--red); white-space: pre-wrap; }
+    .success { color: var(--green); }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f4f7f9; padding: 12px; border-radius: 6px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+    .table-wrap { overflow-x: auto; }
+    .badge { display: inline-block; border-radius: 999px; padding: 3px 8px; background: #eaf1f5; font-size: 11px; font-weight: 650; }
+    .badge.high, .badge.non_compliant { background: #fce9e9; color: var(--red); }
+    .badge.medium, .badge.review_required { background: #fff2d9; color: var(--amber); }
+    .badge.low, .badge.compliant { background: #e5f4eb; color: var(--green); }
+    @media (max-width: 600px) {
+      header { padding: 18px 20px; }
+      main { margin-top: 14px; padding: 0 12px 32px; }
+      .toolbar { justify-content: stretch; }
+      .toolbar input { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CrediLens AI</h1>
+    <p>Risk assessment · explainability · governance · audit</p>
+  </header>
+  <main>
+    <section class="toolbar" aria-label="API connection">
+      <label for="api-key">API key</label>
+      <input id="api-key" type="password" autocomplete="current-password" placeholder="Enter an analyst or reviewer API key">
+      <button id="connect" class="primary" type="button">Connect</button>
+      <span id="connection-status" class="notice">Not connected</span>
+    </section>
+    <nav class="tabs" role="tablist" aria-label="Dashboard">
+      <button class="tab" role="tab" aria-selected="true" data-panel="overview">Overview</button>
+      <button class="tab" role="tab" aria-selected="false" data-panel="assessment">Assessment</button>
+      <button class="tab" role="tab" aria-selected="false" data-panel="audit">Audit &amp; compliance</button>
+      <button class="tab" role="tab" aria-selected="false" data-panel="models">Models &amp; configuration</button>
+    </nav>
+    <section id="overview" class="panel active">
+      <div id="summary-cards" class="grid"></div>
+      <div class="section">
+        <h2>Recent assessments</h2>
+        <div id="recent-audits" class="table-wrap notice">Connect to load assessment history.</div>
+      </div>
+    </section>
+    <section id="assessment" class="panel">
+      <div class="section">
+        <h2>New risk assessment</h2>
+        <form id="assessment-form">
+          <div class="fields">
+            <div><label for="industry">Industry</label><select id="industry" required></select></div>
+            <div><label for="risk-type">Risk type</label><select id="risk-type" required></select></div>
+            <div><label for="application-id">Application reference (optional)</label><input id="application-id" maxlength="128"></div>
+          </div>
+          <div id="feature-fields" class="fields"></div>
+          <div class="actions"><button class="primary" type="submit">Run assessment</button></div>
+        </form>
+        <div id="assessment-result" aria-live="polite"></div>
+      </div>
+    </section>
+    <section id="audit" class="panel">
+      <div class="section">
+        <h2>Audit trail</h2>
+        <div class="actions"><button id="refresh-audits" class="secondary" type="button">Refresh</button></div>
+        <div id="audit-table" class="table-wrap notice">Connect to load audit records.</div>
+      </div>
+      <div id="audit-detail" class="section" hidden></div>
+    </section>
+    <section id="models" class="panel">
+      <div id="model-details" class="section"><h2>Models &amp; configuration</h2><p class="notice">Connect to load model information.</p></div>
+    </section>
+    <p id="page-error" class="error" role="alert"></p>
+  </main>
+  <script>
+    const apiKeyInput = document.getElementById("api-key");
+    const connectButton = document.getElementById("connect");
+    const statusText = document.getElementById("connection-status");
+    const errorBox = document.getElementById("page-error");
+    const industrySelect = document.getElementById("industry");
+    const riskSelect = document.getElementById("risk-type");
+    let modules = {};
+    let currentAssessment = null;
+
+    apiKeyInput.value = sessionStorage.getItem("credilens-api-key") || "";
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": sessionStorage.getItem("credilens-api-key") || "",
+          ...(options.headers || {})
+        }
+      });
+      const contentType = response.headers.get("content-type") || "";
+      const body = contentType.includes("application/json") ? await response.json() : await response.text();
+      if (!response.ok) {
+        const reason = typeof body === "object" && body !== null ? body.detail : body;
+        throw new Error(Array.isArray(reason) ? reason.join("\n") : String(reason || response.statusText));
+      }
+      return body;
+    }
+
+    function setText(element, value) {
+      element.textContent = value === null || value === undefined ? "—" : String(value);
+    }
+
+    function showError(error) {
+      setText(errorBox, error.message || error);
+    }
+
+    function badge(value) {
+      const element = document.createElement("span");
+      element.className = `badge ${String(value || "").toLowerCase()}`;
+      setText(element, value || "—");
+      return element;
+    }
+
+    function cell(row, value) {
+      const element = document.createElement("td");
+      setText(element, value);
+      row.appendChild(element);
+      return element;
+    }
+
+    function makeAuditTable(records, target) {
+      const table = document.createElement("table");
+      const head = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      ["Created", "Industry / risk", "Score", "Risk", "Decision", "Compliance", ""].forEach((label) => {
+        const th = document.createElement("th");
+        setText(th, label);
+        headRow.appendChild(th);
+      });
+      head.appendChild(headRow);
+      table.appendChild(head);
+      const body = document.createElement("tbody");
+      records.forEach((record) => {
+        const row = document.createElement("tr");
+        cell(row, record.timestamp);
+        cell(row, `${record.industry} / ${record.risk_type}`);
+        cell(row, Number(record.risk_probability).toFixed(3));
+        const level = document.createElement("td");
+        level.appendChild(badge(record.risk_level));
+        row.appendChild(level);
+        cell(row, record.decision);
+        const compliance = document.createElement("td");
+        compliance.appendChild(badge(record.compliance_status));
+        row.appendChild(compliance);
+        const action = document.createElement("td");
+        const button = document.createElement("button");
+        button.className = "secondary";
+        button.type = "button";
+        setText(button, "Details");
+        button.addEventListener("click", () => loadAudit(record.audit_id));
+        action.appendChild(button);
+        row.appendChild(action);
+        body.appendChild(row);
+      });
+      table.appendChild(body);
+      target.replaceChildren(table);
+      if (records.length === 0) setText(target, "No assessments recorded yet.");
+    }
+
+    async function loadOverview() {
+      const [summary, audits] = await Promise.all([api("/api/summary"), api("/api/audit?limit=8")]);
+      const cards = document.getElementById("summary-cards");
+      cards.replaceChildren();
+      [
+        ["Total assessments", summary.total_audits],
+        ["Awaiting human review", summary.pending_human_review],
+        ["Configured industries", summary.total_industries],
+        ["Enabled modules", summary.module_count]
+      ].forEach(([label, value]) => {
+        const card = document.createElement("article");
+        card.className = "card";
+        const title = document.createElement("div");
+        title.className = "label";
+        setText(title, label);
+        const number = document.createElement("div");
+        number.className = "value";
+        setText(number, value);
+        card.append(title, number);
+        cards.appendChild(card);
+      });
+      makeAuditTable(audits.items, document.getElementById("recent-audits"));
+    }
+
+    function currentModule() {
+      return modules[industrySelect.value]?.[riskSelect.value] || null;
+    }
+
+    function renderRiskTypes() {
+      riskSelect.replaceChildren();
+      Object.keys(modules[industrySelect.value] || {}).forEach((riskType) => {
+        const option = document.createElement("option");
+        option.value = riskType;
+        setText(option, riskType.replaceAll("_", " "));
+        riskSelect.appendChild(option);
+      });
+      renderFeatureFields();
+    }
+
+    function renderFeatureFields() {
+      const module = currentModule();
+      const container = document.getElementById("feature-fields");
+      container.replaceChildren();
+      if (!module) return;
+      const categorical = module.categorical_features || {};
+      module.features.forEach((feature) => {
+        const wrapper = document.createElement("div");
+        const label = document.createElement("label");
+        const id = `feature-${feature}`;
+        label.htmlFor = id;
+        setText(label, feature.replaceAll("_", " "));
+        let input;
+        if (categorical[feature]) {
+          input = document.createElement("select");
+          categorical[feature].forEach((value) => {
+            const option = document.createElement("option");
+            option.value = value;
+            setText(option, value);
+            input.appendChild(option);
+          });
+        } else {
+          input = document.createElement("input");
+          input.type = "number";
+          input.step = "any";
+        }
+        input.id = id;
+        input.required = true;
+        wrapper.append(label, input);
+        container.appendChild(wrapper);
+      });
+    }
+
+    async function loadAudit(auditId) {
+      const [record, events, compliance] = await Promise.all([
+        api(`/api/audit/${encodeURIComponent(auditId)}`),
+        api(`/api/audit/${encodeURIComponent(auditId)}/events`),
+        api(`/api/compliance/${encodeURIComponent(auditId)}`)
+      ]);
+      const detail = document.getElementById("audit-detail");
+      detail.hidden = false;
+      detail.replaceChildren();
+      const title = document.createElement("h2");
+      setText(title, `Assessment ${record.audit_id}`);
+      const metadata = document.createElement("pre");
+      setText(metadata, JSON.stringify({
+        application_id: record.application_id,
+        industry: record.industry,
+        risk_type: record.risk_type,
+        risk_probability: record.risk_probability,
+        risk_level: record.risk_level,
+        decision: record.decision,
+        compliance_status: record.compliance_status
+      }, null, 2));
+      const checks = document.createElement("pre");
+      setText(checks, JSON.stringify(compliance, null, 2));
+      const history = document.createElement("pre");
+      setText(history, JSON.stringify(events.events.map((event) => ({
+        event_type: event.event_type,
+        created_at: event.created_at,
+        reviewer: event.record.reviewer,
+        final_decision: event.record.final_decision
+      })), null, 2));
+      const actions = document.createElement("div");
+      actions.className = "actions";
+      [["JSON report", "json"], ["HTML report", "html"], ["PNG report", "png"]].forEach(([label, format]) => {
+        const button = document.createElement("button");
+        button.className = "secondary";
+        button.type = "button";
+        setText(button, label);
+        button.addEventListener("click", () => downloadReport(record.audit_id, format));
+        actions.appendChild(button);
+      });
+      if (record.decision === "HUMAN_REVIEW" && !record.decision_trace?.human_decision) {
+        const reviewTitle = document.createElement("h3");
+        setText(reviewTitle, "Reviewer action");
+        const decision = document.createElement("select");
+        decision.id = "review-decision";
+        ["APPROVED", "REJECTED", "APPROVED_WITH_CONDITIONS", "ESCALATED"].forEach((value) => {
+          const option = document.createElement("option");
+          option.value = value;
+          setText(option, value.replaceAll("_", " "));
+          decision.appendChild(option);
+        });
+        const comment = document.createElement("textarea");
+        comment.id = "review-comment";
+        comment.maxLength = 2000;
+        comment.placeholder = "Reviewer notes (optional)";
+        const reviewButton = document.createElement("button");
+        reviewButton.className = "primary";
+        reviewButton.type = "button";
+        setText(reviewButton, "Record review");
+        reviewButton.addEventListener("click", async () => {
+          try {
+            await api(`/api/audit/${encodeURIComponent(record.audit_id)}/review`, {
+              method: "POST",
+              body: JSON.stringify({
+                final_decision: document.getElementById("review-decision").value,
+                reviewer_comment: document.getElementById("review-comment").value || null
+              })
+            });
+            await loadAudit(record.audit_id);
+            await loadOverview();
+          } catch (error) { showError(error); }
+        });
+        detail.append(title, metadata, actions, reviewTitle, decision, comment, reviewButton, checks, history);
+      } else {
+        detail.append(title, metadata, actions, checks, history);
+      }
+    }
+
+    async function downloadReport(auditId, format) {
+      try {
+        const response = await fetch(`/api/reports/${encodeURIComponent(auditId)}/${format}`, {
+          headers: { "X-API-Key": sessionStorage.getItem("credilens-api-key") || "" }
+        });
+        if (!response.ok) throw new Error(`Report request failed (${response.status})`);
+        if (format === "json") {
+          const data = await response.json();
+          const pre = document.createElement("pre");
+          setText(pre, JSON.stringify(data, null, 2));
+          document.getElementById("audit-detail").appendChild(pre);
+          return;
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `credilens-${auditId}.${format}`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (error) { showError(error); }
+    }
+
+    async function connect() {
+      errorBox.textContent = "";
+      statusText.textContent = "Connecting…";
+      sessionStorage.setItem("credilens-api-key", apiKeyInput.value);
+      try {
+        const configuration = await api("/api/config/modules");
+        modules = configuration.modules;
+        industrySelect.replaceChildren();
+        Object.keys(modules).forEach((industry) => {
+          const option = document.createElement("option");
+          option.value = industry;
+          setText(option, industry);
+          industrySelect.appendChild(option);
+        });
+        renderRiskTypes();
+        await Promise.all([loadOverview(), loadAuditTable(), loadModels()]);
+        statusText.textContent = "Connected";
+        statusText.className = "success";
+      } catch (error) {
+        statusText.textContent = "Connection failed";
+        showError(error);
+      }
+    }
+
+    async function loadAuditTable() {
+      const page = await api("/api/audit?limit=50");
+      makeAuditTable(page.items, document.getElementById("audit-table"));
+    }
+
+    async function loadModels() {
+      const [info, configuration] = await Promise.all([api("/api/model-info"), api("/api/config/modules")]);
+      const target = document.getElementById("model-details");
+      target.replaceChildren();
+      const title = document.createElement("h2");
+      setText(title, "Models & configuration");
+      const modelView = document.createElement("pre");
+      setText(modelView, JSON.stringify({
+        registered_models: info.registered_models,
+        model_metadata: info.model_versions,
+        modules: configuration.modules
+      }, null, 2));
+      target.append(title, modelView);
+    }
+
+    connectButton.addEventListener("click", connect);
+    document.querySelectorAll(".tab").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((tab) => tab.setAttribute("aria-selected", String(tab === button)));
+        document.querySelectorAll(".panel").forEach((panel) => panel.classList.toggle("active", panel.id === button.dataset.panel));
+      });
+    });
+    industrySelect.addEventListener("change", renderRiskTypes);
+    riskSelect.addEventListener("change", renderFeatureFields);
+    document.getElementById("refresh-audits").addEventListener("click", () => loadAuditTable().catch(showError));
+    document.getElementById("assessment-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      errorBox.textContent = "";
+      const module = currentModule();
+      const data = {};
+      module.features.forEach((feature) => {
+        const field = document.getElementById(`feature-${feature}`);
+        data[feature] = field.tagName === "SELECT" ? field.value : Number(field.value);
+      });
+      try {
+        currentAssessment = await api("/api/risk/predict", {
+          method: "POST",
+          body: JSON.stringify({
+            industry: industrySelect.value,
+            risk_type: riskSelect.value,
+            application_id: document.getElementById("application-id").value || null,
+            data
+          })
+        });
+        const result = document.getElementById("assessment-result");
+        result.replaceChildren();
+        const heading = document.createElement("h3");
+        setText(heading, `Risk ${currentAssessment.risk_level} · ${currentAssessment.decision}`);
+        const summary = document.createElement("pre");
+        setText(summary, JSON.stringify({
+          audit_id: currentAssessment.audit_id,
+          risk_probability: currentAssessment.risk_probability,
+          scoring_method: currentAssessment.scoring_method,
+          compliance_status: currentAssessment.compliance_status,
+          top_factors: currentAssessment.top_factors
+        }, null, 2));
+        result.append(heading, summary);
+        await Promise.all([loadOverview(), loadAuditTable()]);
+      } catch (error) { showError(error); }
+    });
+
+    if (apiKeyInput.value) connect();
+  </script>
+</body>
+</html>
