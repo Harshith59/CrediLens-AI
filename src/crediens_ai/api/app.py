@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Dict, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.crediens_ai.audit.store import AuditStore
@@ -116,6 +116,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="CrediLens AI", version="0.1.0", lifespan=lifespan)
+
+
+@app.get("/", include_in_schema=False)
+def home() -> RedirectResponse:
+    return RedirectResponse(url="/dashboard")
 
 
 @app.get("/health")

@@ -49,6 +49,12 @@ class ApiFlowTests(unittest.TestCase):
         explain_body = explain_response.json()
         self.assertIn("explainability", explain_body)
 
+    def test_home_redirects_to_dashboard(self):
+        response = self.client.get("/", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 307)
+        self.assertEqual(response.headers["location"], "/dashboard")
+
     def test_config_and_audit_endpoints(self):
         config_response = self.client.get("/api/config/industries")
         self.assertEqual(config_response.status_code, 200)
